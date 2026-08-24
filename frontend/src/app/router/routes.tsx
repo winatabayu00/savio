@@ -10,6 +10,7 @@ import { AccountsPage } from '@/features/accounts/pages/accounts-page';
 import { CategoriesPage } from '@/features/categories/pages/categories-page';
 import { TransactionsPage } from '@/features/transactions/pages/transactions-page';
 import { TransfersPage } from '@/features/transfers/pages/transfers-page';
+import { RecurringPage } from '@/features/recurring/pages/recurring-page';
 
 export const router = createBrowserRouter([
   {
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
       { path: '/categories', element: <CategoriesPage /> },
       { path: '/transactions', element: <TransactionsPage /> },
       { path: '/transfers', element: <TransfersPage /> },
+      { path: '/recurring', element: <RecurringPage /> },
     ],
   },
   { path: '/', element: <Navigate to="/dashboard" replace /> },

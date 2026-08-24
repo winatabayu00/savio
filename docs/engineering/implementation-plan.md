@@ -623,6 +623,7 @@ M06 — Frontend Foundation & Authentication `[DONE]`
 M07 — Accounts & Categories `[DONE]`
 M08 — Transactions & Financial Ledger `[DONE]`
 M09 — Transfers & Reconciliation `[DONE]`
+M10 — Recurring Transactions `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -2925,13 +2926,44 @@ month end
 ## Definition of Done
 
 ```text
-[ ] Future recurring activity appears in forecast
+[x] Future recurring activity appears in forecast
 
-[ ] Actual ledger changes only when confirmed/auto-posted
+[x] Actual ledger changes only when confirmed/auto-posted
 
-[ ] Duplicate posting impossible
+[x] Duplicate posting impossible
 
-[ ] UI distinguishes planned vs actual
+[x] UI distinguishes planned vs actual
+```
+
+Implementation status (2026-08-25):
+
+```text
+Migration 000004: recurring_transactions + recurring_occurrences (UNIQUE
+constraint (recurring_id, due_date) enforces INV-010 at the DB level).
+
+recurring module:
+  frequencies DAILY/WEEKLY/MONTHLY/MONTH_END; MONTHLY clamps short months
+  (Feb 28/29; Go AddDate overflow avoided by stepping on month-day 1);
+  end_date honored; statuses ACTIVE/PAUSED/ENDED; auto_post=false default
+  (planned ≠ actual, user decides);
+  occurrences materialized from start_date through now+90d at create/update;
+  GET /recurring-transactions, POST, GET/:id, PATCH, /:id/pause|resume|end,
+  /:id/occurrences, /recurring-occurrences/:id/confirm|skip;
+  confirm = one DB transaction (row lock + version check → POSTED via
+  transactions.CreateInTx source RECURRING → occurrence CONFIRMED, keeps
+  posted_transaction_id); double-confirm/skip-after-confirm rejected;
+  confirmation is the only path writing actual ledger history from a rule.
+
+tests: schedule unit tests (daily/weekly/monthly clamp/leap/MONTH_END/end
+date) + integration (occurrence generation & month-end anchor, confirm posts
++ idempotency + balance moves, skip writes no ledger, pause/resume/end flow
+with version 409s, confirm version conflict).
+
+Frontend: /recurring page — rule list rows expanding to upcoming occurrences
+with confirm (Got it / Pay) and skip, edit modal (RHF+Zod, 422 mapping),
+pause/resume/end actions.
+
+Verification: go build ./..., go test ./... (63), npm run typecheck/test/build.
 ```
 
 ---

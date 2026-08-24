@@ -93,10 +93,25 @@ type categoryRow struct {
 }
 
 func (s *Service) Create(ctx context.Context, workspaceID, userID uuid.UUID, in *CreateInput) (*View, error) {
+	return s.create(ctx, nil, workspaceID, userID, in)
+}
+
+// CreateInTx runs the same creation inside an explicit transaction so foreign
+// writers (e.g. recurring occurrence confirmation) stay atomic with their own
+// state transition.
+func (s *Service) CreateInTx(ctx context.Context, tx *gorm.DB, workspaceID, userID uuid.UUID, in *CreateInput) (*View, error) {
+	return s.create(ctx, tx, workspaceID, userID, in)
+}
+
+func (s *Service) create(ctx context.Context, dbIn *gorm.DB, workspaceID, userID uuid.UUID, in *CreateInput) (*View, error) {
+	q := dbIn
+	if q == nil {
+		q = s.db
+	}
 	if err := validateCreate(in); err != nil {
 		return nil, err
 	}
-	acct, err := s.loadAccount(ctx, workspaceID, in.AccountID)
+	acct, err := loadAccount(q, workspaceID, in.AccountID)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +119,7 @@ func (s *Service) Create(ctx context.Context, workspaceID, userID uuid.UUID, in 
 		return nil, errs.BusinessConflict("BUSINESS_CONFLICT", "This account is archived and cannot accept new activity.")
 	}
 	if in.CategoryID != nil {
-		if err := s.validateCategory(ctx, workspaceID, *in.CategoryID, in.Type); err != nil {
+		if err := validateCategorySave(q, workspaceID, *in.CategoryID, in.Type); err != nil {
 			return nil, err
 		}
 	}
@@ -135,7 +150,7 @@ func (s *Service) Create(ctx context.Context, workspaceID, userID uuid.UUID, in 
 	if status == string(StatusPosted) {
 		t.PostedAt = &now
 	}
-	if err := s.repo.Create(ctx, t); err != nil {
+	if err := q.WithContext(ctx).Create(t).Error; err != nil {
 		return nil, err
 	}
 	s.audit.Record(ctx, &workspaceID, &userID, "transaction.create", "transaction", &t.ID, map[string]any{
@@ -157,7 +172,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, userID uuid.UUID, in 
 		return nil, errs.BusinessConflict("BUSINESS_CONFLICT", "Only draft transactions can be edited. Void the posted transaction and create a replacement.")
 	}
 	if in.CategoryID != nil {
-		if err := s.validateCategory(ctx, workspaceID, *in.CategoryID, in.Type); err != nil {
+		if err := validateCategorySave(s.db, workspaceID, *in.CategoryID, in.Type); err != nil {
 			return nil, err
 		}
 	}
@@ -195,7 +210,7 @@ func (s *Service) Post(ctx context.Context, workspaceID, userID uuid.UUID, id uu
 	if t.Status != string(StatusDraft) {
 		return nil, errs.BusinessConflict("BUSINESS_CONFLICT", "Only draft transactions can be posted.")
 	}
-	acct, err := s.loadAccount(ctx, workspaceID, t.AccountID)
+	acct, err := loadAccount(s.db, workspaceID, t.AccountID)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +218,7 @@ func (s *Service) Post(ctx context.Context, workspaceID, userID uuid.UUID, id uu
 		return nil, errs.BusinessConflict("BUSINESS_CONFLICT", "This account is archived and cannot accept posted activity.")
 	}
 	if t.CategoryID != nil {
-		if err := s.validateCategory(ctx, workspaceID, *t.CategoryID, t.Type); err != nil {
+		if err := validateCategorySave(s.db, workspaceID, *t.CategoryID, t.Type); err != nil {
 			return nil, err
 		}
 	}
@@ -260,9 +275,9 @@ func (s *Service) Get(ctx context.Context, workspaceID, id uuid.UUID) (*View, er
 	return toView(t), nil
 }
 
-func (s *Service) loadAccount(ctx context.Context, workspaceID, accountID uuid.UUID) (*accountRow, error) {
+func loadAccount(q *gorm.DB, workspaceID, accountID uuid.UUID) (*accountRow, error) {
 	var a accountRow
-	err := s.db.WithContext(ctx).Table("accounts").
+	err := q.WithContext(context.Background()).Table("accounts").
 		Select("id, status").Where("id = ? AND workspace_id = ?", accountID, workspaceID).First(&a).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errs.NotFound("Account not found")
@@ -273,11 +288,11 @@ func (s *Service) loadAccount(ctx context.Context, workspaceID, accountID uuid.U
 	return &a, nil
 }
 
-// validateCategory ensures the category is usable by this workspace and has the
+// validateCategorySave ensures the category is usable by this workspace and has the
 // correct type for the transaction type.
-func (s *Service) validateCategory(ctx context.Context, workspaceID uuid.UUID, categoryID uuid.UUID, txType string) error {
+func validateCategorySave(q *gorm.DB, workspaceID uuid.UUID, categoryID uuid.UUID, txType string) error {
 	var c categoryRow
-	err := s.db.WithContext(ctx).Table("categories").
+	err := q.WithContext(context.Background()).Table("categories").
 		Select("id, type, workspace_id AS ws").
 		Where("(id = ? AND (workspace_id = ? OR is_system = TRUE)) AND status = 'ACTIVE'", categoryID, workspaceID).
 		First(&c).Error

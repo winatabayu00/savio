@@ -6,6 +6,7 @@ import (
 	"github.com/savio/savio/backend/internal/accounts"
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/categories"
+	"github.com/savio/savio/backend/internal/recurring"
 	"github.com/savio/savio/backend/internal/transactions"
 	"github.com/savio/savio/backend/internal/transfers"
 	"github.com/savio/savio/backend/internal/workspaces"
@@ -24,6 +25,7 @@ func registerModules(a *App) {
 	registerCategoryRoutes(api, a)
 	registerTransactionRoutes(api, a)
 	registerTransferRoutes(api, a)
+	registerRecurringRoutes(api, a)
 }
 
 func registerTransactionRoutes(api *gin.RouterGroup, a *App) {
@@ -52,6 +54,15 @@ func registerTransferRoutes(api *gin.RouterGroup, a *App) {
 	g := api.Group("/transfers")
 	g.Use(auth.AuthRequired(a.DB, a.Config))
 	transfers.RegisterRoutes(g, h, auth.RequireWrite())
+}
+
+func registerRecurringRoutes(api *gin.RouterGroup, a *App) {
+	h := recurring.NewHandler(recurring.NewService(a.DB))
+	g := api.Group("/recurring-transactions")
+	g.Use(auth.AuthRequired(a.DB, a.Config))
+	occs := api.Group("/recurring-occurrences")
+	occs.Use(auth.AuthRequired(a.DB, a.Config))
+	recurring.RegisterRoutes(g, h, occs, auth.RequireWrite())
 }
 
 func registerCategoryRoutes(api *gin.RouterGroup, a *App) {
