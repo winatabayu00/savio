@@ -1,9 +1,9 @@
 package seeds
 
 import (
-	"time"
 	"context"
 	"log/slog"
+	"time"
 
 	"errors"
 
@@ -18,7 +18,7 @@ type SystemCategory struct {
 	Type        string // INCOME | EXPENSE
 	Icon        *string
 	Description *string
-	IsSystem    bool       `gorm:"default:true"`
+	IsSystem    bool `gorm:"default:true"`
 	Status      string
 	CreatedAt   time.Time `gorm:"type:timestamptz"`
 	UpdatedAt   time.Time `gorm:"type:timestamptz"`

@@ -612,9 +612,9 @@ M01 — Infrastructure & Developer Experience
 
 M02 — Backend Foundation
 
-M03 — Database Foundation & Migrations
+M03 — Database Foundation & Migrations `[DONE]`
 
-M04 — Authentication & Session Security
+M04 — Authentication & Session Security `[DONE]`
 
 M05 — Workspace Authorization & RBAC
 
@@ -1510,6 +1510,77 @@ CSRF invalid
 
 [ ] Auth tests pass
 ```
+
+---
+
+## Implementation Status — M04 `[DONE]`
+
+Auth, sessions, and CSRF are implemented and runtime-verified.
+
+Implemented:
+
+```text
+GET  /api/v1/auth/csrf
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
+GET  /api/v1/auth/me
+
+GET  /api/v1/sessions
+DELETE /api/v1/sessions/:id
+DELETE /api/v1/sessions
+```
+
+Design decisions and deviations from the planned spec:
+
+```text
+1. CSRF model: signed double-submit cookie
+   - csrf cookie is a signed (HMAC) random token (not raw JWT)
+   - protected mutations validate header X-CSRF-Token == cookie signature
+   - verified offline-safe; no server-side state
+   - disabled for GET/HEAD/OPTIONS; enforced for POST/PUT/PATCH/DELETE
+
+2. Cookie expiry window
+   - access cookie default 15m (ACCESS_TOKEN_TTL, env-tunable), refresh 14d
+
+3. Refresh rotation
+   - rotating read/write protected by SELECT ... FOR UPDATE on the session row
+   - one atomic transaction; the old token hash is written to a revoked-token
+     bucket before the new hash is installed
+   - replay of an old refresh token is rejected with 401 REFRESH_TOKEN_INVALID
+
+4. Logout revokes the session immediately
+   - AuthRequired middleware rejects JWTs whose session has been revoked,
+     so logout takes effect on the next request (no lingering access)
+
+5. Password hashing
+   - Argon2id (github.com/alexedwards/argon2id), KDF parameters secret
+     configured, independent per-user salt
+   - login failures return 401 INVALID_CREDENTIALS (no user enumeration)
+
+6. Rate limiting on login (15/min), register (15/min), refresh (60/min),
+   server-side fixed-window (single-instance in-memory; swap to Redis when
+   Savio reaches multiple API replicas)
+```
+
+Test artifacts:
+
+```text
+internal/auth/service_test.go
+  TestRegisterLoginRefreshRotation
+  TestRefreshRotationRace
+  TestLogoutRevokesImmediately
+  TestDuplicateEmailRejected
+  TestCSRFValidate
+
+Verification:
+  go test ./internal/auth/ ./internal/platform/...
+  go test -race ./internal/auth/
+  go build ./... && go vet ./...
+```
+
+Runtime-verified curl flows (register → me → refresh → replay-reject → logout → me/refresh 401) pass against the running API.
 
 ---
 

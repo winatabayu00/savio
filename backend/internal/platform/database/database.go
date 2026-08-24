@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
-	gormlogger "gorm.io/gorm/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 // Connect opens a PostgreSQL connection via GORM. The schema is controlled by

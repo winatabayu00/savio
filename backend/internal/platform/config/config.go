@@ -56,7 +56,7 @@ func Load() (*Config, error) {
 		AIBaseURL:     os.Getenv("AI_BASE_URL"),
 		AIAPIKey:      os.Getenv("AI_API_KEY"),
 		AIModel:       get("AI_MODEL", "gpt-4o-mini"),
-		AITimeout:     getDur("AI_TIMEOUT_SECONDS", 20)*time.Second,
+		AITimeout:     getDur("AI_TIMEOUT_SECONDS", 20) * time.Second,
 		AIToolTimeout: 10 * time.Second,
 
 		MinioEndpoint:  get("MINIO_ENDPOINT", "localhost:9000"),

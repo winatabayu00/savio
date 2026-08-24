@@ -25,11 +25,11 @@ const (
 // refreshed with workspace scope. It is always built server-side from DB
 // state; the client can never choose it.
 type Ctx struct {
-	UserID           uuid.UUID
-	WorkspaceID      uuid.UUID
-	WorkspaceRole    Role
-	SessionID        uuid.UUID
-	IsAuthenticated  bool
+	UserID          uuid.UUID
+	WorkspaceID     uuid.UUID
+	WorkspaceRole   Role
+	SessionID       uuid.UUID
+	IsAuthenticated bool
 }
 
 // CanWrite reports whether the role may mutate financial state.

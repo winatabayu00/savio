@@ -35,6 +35,7 @@ func New(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *App {
 
 	app := &App{Config: cfg, DB: db, Redis: rdb, Engine: engine}
 	app.registerCoreRoutes()
+	registerModules(app)
 	return app
 }
 

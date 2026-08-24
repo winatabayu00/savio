@@ -32,7 +32,10 @@ func TestParseDecimalToMinorUnits(t *testing.T) {
 }
 
 func TestMinorUnitsToDecimalString(t *testing.T) {
-	cases := []struct{ in int64; want string }{
+	cases := []struct {
+		in   int64
+		want string
+	}{
 		{150000000, "1500000.00"},
 		{1, "0.01"},
 		{12345, "123.45"},
