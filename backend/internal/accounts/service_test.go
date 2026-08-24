@@ -24,6 +24,7 @@ import (
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/migrations"
 	"github.com/savio/savio/backend/internal/platform/authctx"
+	"github.com/savio/savio/backend/internal/transactions"
 	"github.com/savio/savio/backend/internal/users"
 	"github.com/savio/savio/backend/internal/workspaces"
 )
@@ -132,7 +133,7 @@ func newRouter(t *testing.T, db *gorm.DB, wsID uuid.UUID) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	h := accounts.NewHandler(accounts.NewService(db))
+	h := accounts.NewHandler(accounts.NewService(db)).WithTransactions(transactions.NewService(db))
 	testAuth := func(c *gin.Context) {
 		uid, err := uuid.Parse(c.GetHeader("X-Test-User"))
 		if err != nil {
@@ -178,12 +179,82 @@ func fixture(t *testing.T, db *gorm.DB) fixtureResult {
 		PasswordHash: "x", Timezone: "Asia/Jakarta", DefaultCurrency: "IDR", Locale: "id-ID", Status: "ACTIVE"}).Error)
 	mustNil(t, db.Create(&workspaces.Membership{ID: uuid.New(), WorkspaceID: wsID, UserID: view, Role: "VIEWER", Status: "ACTIVE"}).Error)
 	t.Cleanup(func() {
+		db.Exec(`DELETE FROM audit_logs WHERE workspace_id = $1`, wsID)
+		db.Exec(`DELETE FROM transactions WHERE workspace_id = $1`, wsID)
+		db.Exec(`DELETE FROM account_transfers WHERE workspace_id = $1`, wsID)
 		db.Exec(`DELETE FROM accounts WHERE workspace_id = $1`, wsID)
 		db.Exec(`DELETE FROM workspace_memberships WHERE workspace_id = $1`, wsID)
 		db.Exec(`DELETE FROM workspaces WHERE id = $1`, wsID)
 		db.Exec(`DELETE FROM users WHERE id IN ($1, $2)`, owner, view)
 	})
 	return fixtureResult{wsID: wsID, owner: owner, memb: memb, view: view}
+}
+
+func TestAccountReconcileCreatesSignedAdjustment(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	fx := fixture(t, db)
+	r := newRouter(t, db, fx.wsID)
+	w := doReq(t, r, "POST", "/api/v1/accounts", fx.owner.String(),
+		`{"name":"Cashbox","type":"CASH","currency":"IDR","opening_balance":100000}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create account: %d %s", w.Code, w.Body.String())
+	}
+	id := decodeBody(t, w)["data"].(map[string]any)["id"].(string)
+
+	// actual balance "1200.00" = 120000 minor → positive ADJUSTMENT of 20000
+	w = doReq(t, r, "POST", "/api/v1/accounts/"+id+"/reconcile", fx.owner.String(),
+		`{"actual_balance":"1200.00","reason":"cash count"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("reconcile: %d %s", w.Code, w.Body.String())
+	}
+	body := decodeBody(t, w)["data"].(map[string]any)
+	if body["difference"].(string) != "200.00" {
+		t.Fatalf("difference = %v", body["difference"])
+	}
+	adj := body["adjustment"].(map[string]any)
+	if adj["type"].(string) != "ADJUSTMENT" || adj["status"].(string) != "POSTED" {
+		t.Fatalf("unexpected adjustment: %v", adj)
+	}
+	// derived balance now matches the stated actual
+	w = doReq(t, r, "GET", "/api/v1/accounts/"+id, fx.owner.String(), "")
+	if got := decodeBody(t, w)["data"].(map[string]any)["derived_balance"].(float64); got != 120000 {
+		t.Fatalf("derived after reconcile = %v, want 120000", got)
+	}
+	// reconciling to the same value now conflicts
+	w = doReq(t, r, "POST", "/api/v1/accounts/"+id+"/reconcile", fx.owner.String(),
+		`{"actual_balance":"1200.00","reason":"again"}`)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("no-op reconcile expected 409, got %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestAccountReconcileDownward(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	fx := fixture(t, db)
+	r := newRouter(t, db, fx.wsID)
+	w := doReq(t, r, "POST", "/api/v1/accounts", fx.owner.String(),
+		`{"name":"Wallet","type":"EWALLET","currency":"IDR","opening_balance":500000}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create account: %d", w.Code)
+	}
+	id := decodeBody(t, w)["data"].(map[string]any)["id"].(string)
+	// actual "4000.00" = 400000 minor → negative signed adjustment
+	w = doReq(t, r, "POST", "/api/v1/accounts/"+id+"/reconcile", fx.owner.String(),
+		`{"actual_balance":"4000.00","reason":"spent"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("reconcile: %d %s", w.Code, w.Body.String())
+	}
+	if got := decodeBody(t, w)["data"].(map[string]any)["difference"].(string); got != "-1000.00" {
+		t.Fatalf("difference = %s", got)
+	}
+	w = doReq(t, r, "GET", "/api/v1/accounts/"+id, fx.owner.String(), "")
+	if got := decodeBody(t, w)["data"].(map[string]any)["derived_balance"].(float64); got != 400000 {
+		t.Fatalf("derived = %v, want 400000", got)
+	}
 }
 
 func TestAccountCreateListGet(t *testing.T) {
@@ -312,7 +383,7 @@ func TestAccountViewerCannotMutate(t *testing.T) {
 	r := newRouter(t, db, fx.wsID)
 	for _, body := range []struct{ method, path, b string }{
 		{"POST", "/api/v1/accounts", `{"name":"x","type":"CASH","currency":"IDR","opening_balance":0}`},
-		{"DELETE", "/api/v1/accounts/"+uuid.NewString(), ""},
+		{"DELETE", "/api/v1/accounts/" + uuid.NewString(), ""},
 	} {
 		w := doReq(t, r, body.method, body.path, fx.view.String(), body.b)
 		if w.Code != http.StatusForbidden {

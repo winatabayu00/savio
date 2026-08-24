@@ -2,19 +2,31 @@ package accounts
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/savio/savio/backend/internal/platform/authctx"
 	"github.com/savio/savio/backend/internal/platform/errs"
 	"github.com/savio/savio/backend/internal/platform/httpx"
+	"github.com/savio/savio/backend/internal/platform/money"
+	"github.com/savio/savio/backend/internal/transactions"
 )
 
 type Handler struct {
 	svc *Service
+	trx *transactions.Service
 }
 
-func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
+func NewHandler(svc *Service) *Handler {
+	return &Handler{svc: svc}
+}
+
+// WithTransactions injects the ledger service for reconciliation.
+func (h *Handler) WithTransactions(trx *transactions.Service) *Handler {
+	h.trx = trx
+	return h
+}
 
 type createReq struct {
 	Name            string `json:"name"`
@@ -196,6 +208,73 @@ func derefVersion(v *int64) int64 {
 	return *v
 }
 
+type reconcileReq struct {
+	ActualBalance string `json:"actual_balance"`
+	Reason        string `json:"reason"`
+}
+
+// Reconcile aligns the tracked balance with the physical account by creating
+// a signed ADJUSTMENT (AGENTS #29: never rewrite history).
+func (h *Handler) Reconcile(c *gin.Context) {
+	if h.trx == nil {
+		httpx.Fail(c, errs.Internal(nil))
+		return
+	}
+	ax, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	id, err := httpx.ParseUUID(c, "id")
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	var req reconcileReq
+	if err := httpx.Bind(c, &req); err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	actual, err := money.ParseMinorUnits(req.ActualBalance)
+	if err != nil {
+		httpx.Fail(c, errs.ValidationFields(map[string]string{"actual_balance": "actual_balance must be a valid decimal"}))
+		return
+	}
+	view, err := h.svc.Get(c.Request.Context(), ax.WorkspaceID, id)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	diff := actual - view.DerivedBalance
+	if diff == 0 {
+		httpx.Fail(c, errs.BusinessConflict("BUSINESS_CONFLICT", "The account already matches the stated balance. No adjustment needed."))
+		return
+	}
+	reason := req.Reason
+	if reason == "" {
+		reason = "Reconciliation adjustment"
+	}
+	adj, err := h.trx.Create(c.Request.Context(), ax.WorkspaceID, ax.UserID, &transactions.CreateInput{
+		AccountID:       id,
+		Type:            string(transactions.TypeAdjustment),
+		AmountMinor:     diff,
+		TransactionDate: timeNowUTC(),
+		Description:     reason,
+		Source:          string(transactions.SourceSystem),
+		Status:          string(transactions.StatusPosted),
+	})
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, gin.H{
+		"adjustment": adj,
+		"difference": money.FormatMinorUnits(diff),
+	})
+}
+
+func timeNowUTC() time.Time { return time.Now().UTC() }
+
 // RegisterRoutes wires the account endpoints. writeOnly enforces VIEWER
 // cannot mutate; roles are passed in to keep the auth dependency out of the
 // module.
@@ -206,5 +285,6 @@ func RegisterRoutes(g *gin.RouterGroup, h *Handler, writeOnly gin.HandlerFunc) {
 	g.PATCH("/:id", writeOnly, h.Update)
 	g.POST("/:id/archive", writeOnly, h.Archive)
 	g.POST("/:id/restore", writeOnly, h.Restore)
+	g.POST("/:id/reconcile", writeOnly, h.Reconcile)
 	g.DELETE("/:id", writeOnly, h.Delete)
 }

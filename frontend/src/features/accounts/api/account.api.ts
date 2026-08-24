@@ -41,3 +41,11 @@ export async function restoreAccount(id: string): Promise<Account> {
 export async function deleteAccount(id: string): Promise<void> {
   await api.delete(`/accounts/${id}`);
 }
+
+export async function reconcileAccount(id: string, actualBalance: string, reason?: string): Promise<{ adjustment: unknown; difference: string }> {
+  const { data } = await api.post<SuccessEnvelope<{ adjustment: unknown; difference: string }>>(`/accounts/${id}/reconcile`, {
+    actual_balance: actualBalance,
+    reason,
+  });
+  return data.data;
+}

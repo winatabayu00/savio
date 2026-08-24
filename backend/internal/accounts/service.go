@@ -111,17 +111,17 @@ func (s *Service) Create(ctx context.Context, workspaceID, userID uuid.UUID, in 
 	}
 	now := time.Now()
 	a := &Account{
-		ID:             uuid.New(),
-		WorkspaceID:    workspaceID,
-		Name:           strings.TrimSpace(in.Name),
-		Type:           strings.ToUpper(in.Type),
-		Currency:       currency,
-		OpeningBalance: in.OpeningBalance,
-		Status:         string(StatusActive),
-		Version:        1,
+		ID:              uuid.New(),
+		WorkspaceID:     workspaceID,
+		Name:            strings.TrimSpace(in.Name),
+		Type:            strings.ToUpper(in.Type),
+		Currency:        currency,
+		OpeningBalance:  in.OpeningBalance,
+		Status:          string(StatusActive),
+		Version:         1,
 		CreatedByUserID: &userID,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 	if in.InstitutionName != "" {
 		a.InstitutionName = &in.InstitutionName

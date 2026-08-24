@@ -4,6 +4,7 @@ import {
   createAccount,
   deleteAccount,
   listAccounts,
+  reconcileAccount,
   restoreAccount,
   updateAccount,
 } from '@/features/accounts/api/account.api';
@@ -46,6 +47,11 @@ export function useAccountMutations() {
     mutationFn: (id: string) => deleteAccount(id),
     onSuccess: invalidate,
   });
+  const reconcile = useMutation({
+    mutationFn: ({ id, actualBalance, reason }: { id: string; actualBalance: string; reason?: string }) =>
+      reconcileAccount(id, actualBalance, reason),
+    onSuccess: invalidate,
+  });
 
-  return { create, update, archive, restore, remove };
+  return { create, update, archive, restore, remove, reconcile };
 }

@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { EmptyState } from '@/shared/components/ui/empty-state';
 import { Modal } from '@/shared/components/ui/modal';
+import { TextField } from '@/shared/components/ui/text-field';
+import { formatAmountString } from '@/shared/utils/money';
 import { AccountForm } from '@/features/accounts/components/account-form';
 import { AccountCard } from '@/features/accounts/components/account-card';
 import { useAccountMutations, useAccounts } from '@/features/accounts/hooks/use-accounts';
 import type { Account } from '@/features/accounts/types/account.types';
+import { ApiError } from '@/shared/api/client';
 
 type Tab = 'ACTIVE' | 'ARCHIVED';
 
@@ -13,10 +16,13 @@ export function AccountsPage() {
   const [tab, setTab] = useState<Tab>('ACTIVE');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Account | undefined>();
+  const [reconciling, setReconciling] = useState<Account | undefined>();
+  const [actualBalance, setActualBalance] = useState('');
+  const [reconcileError, setReconcileError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch } = useAccounts(tab);
-  const { archive, restore } = useAccountMutations();
+  const { archive, restore, reconcile } = useAccountMutations();
 
   const flash = (message: string) => {
     setNotice(message);
@@ -89,6 +95,7 @@ export function AccountsPage() {
               key={account.id}
               account={account}
               onEdit={(a) => { setEditing(a); setFormOpen(true); }}
+              onReconcile={(a) => { setReconciling(a); setActualBalance((a.derived_balance / 100).toFixed(2).replace(/\.?0+$/, '')); setReconcileError(null); }}
               onArchiveRestore={(id, isArchive) =>
                 isArchive
                   ? archive.mutateAsync(id).then(() => flash('Account archived.'))
@@ -102,6 +109,45 @@ export function AccountsPage() {
 
       <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit account' : 'Add account'}>
         <AccountForm account={editing} onDone={() => { setFormOpen(false); setEditing(undefined); }} />
+      </Modal>
+
+      <Modal open={Boolean(reconciling)} onClose={() => setReconciling(undefined)} title={`Reconcile ${reconciling?.name ?? ''}`}>
+        {reconciling ? (
+          <div className="space-y-4 text-sm text-gray-700">
+            <p>
+              Tracked balance:{' '}
+              <span className="font-semibold text-gray-900">
+                {formatAmountString((reconciling.derived_balance / 100).toFixed(2), reconciling.currency)}
+              </span>
+              . Enter what the account actually holds to create a signed adjustment.
+            </p>
+            <TextField
+              label={`Actual balance (${reconciling.currency})`}
+              inputMode="decimal"
+              value={actualBalance}
+              onChange={(e) => setActualBalance(e.target.value)}
+            />
+            {reconcileError ? <p role="alert" className="text-sm text-red-600">{reconcileError}</p> : null}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setReconciling(undefined)}>Cancel</Button>
+              <Button
+                onClick={async () => {
+                  setReconcileError(null);
+                  try {
+                    const res = await reconcile.mutateAsync({ id: reconciling.id, actualBalance });
+                    setReconciling(undefined);
+                    flash(`Reconciled. Adjustment: ${res.difference}.`);
+                  } catch (err) {
+                    const apiErr = err as ApiError;
+                    setReconcileError(apiErr?.message ?? 'Reconciliation failed.');
+                  }
+                }}
+              >
+                Reconcile
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </Modal>
     </div>
   );

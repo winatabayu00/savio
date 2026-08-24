@@ -7,6 +7,7 @@ import (
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/categories"
 	"github.com/savio/savio/backend/internal/transactions"
+	"github.com/savio/savio/backend/internal/transfers"
 	"github.com/savio/savio/backend/internal/workspaces"
 )
 
@@ -22,6 +23,7 @@ func registerModules(a *App) {
 	registerAccountRoutes(api, a)
 	registerCategoryRoutes(api, a)
 	registerTransactionRoutes(api, a)
+	registerTransferRoutes(api, a)
 }
 
 func registerTransactionRoutes(api *gin.RouterGroup, a *App) {
@@ -39,10 +41,17 @@ func registerWorkspaceRoutes(api *gin.RouterGroup, a *App) {
 }
 
 func registerAccountRoutes(api *gin.RouterGroup, a *App) {
-	h := accounts.NewHandler(accounts.NewService(a.DB))
+	h := accounts.NewHandler(accounts.NewService(a.DB)).WithTransactions(transactions.NewService(a.DB))
 	g := api.Group("/accounts")
 	g.Use(auth.AuthRequired(a.DB, a.Config))
 	accounts.RegisterRoutes(g, h, auth.RequireWrite())
+}
+
+func registerTransferRoutes(api *gin.RouterGroup, a *App) {
+	h := transfers.NewHandler(transfers.NewService(a.DB))
+	g := api.Group("/transfers")
+	g.Use(auth.AuthRequired(a.DB, a.Config))
+	transfers.RegisterRoutes(g, h, auth.RequireWrite())
 }
 
 func registerCategoryRoutes(api *gin.RouterGroup, a *App) {

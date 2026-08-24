@@ -622,6 +622,7 @@ M06 — Frontend Foundation & Authentication `[DONE]`
 
 M07 — Accounts & Categories `[DONE]`
 M08 — Transactions & Financial Ledger `[DONE]`
+M09 — Transfers & Reconciliation `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -2573,6 +2574,37 @@ or calculate transfers separately.
 The key invariant:
 
 > Transfers must never count as income or expense.
+
+Implementation status (2026-08-25):
+
+```text
+Migration 000003: account_transfers.
+
+transfers module:
+  create = single DB transaction (atomicity; no partial source/dest state);
+  rules enforced: different accounts (422), same workspace (foreign 404),
+  active accounts only (409 when archived), amount > 0 (422), currency
+  follows workspace base by construction;
+  VOIDED transfers excluded from derived balances via accounts
+  PostBalanceModifiers (which auto-turned-on for account_transfers);
+  list with date-range filter + pagination + joined account names;
+  optimistic version on void; double-void rejects.
+
+reconciliation (POST /accounts/:id/reconcile):
+  computes difference = actual_balance − derived_balance and creates a signed
+  POSTED ADJUSTMENT (source SYSTEM); zero difference → 409; balances converge
+  to the stated actual. Never rewrites history (INV-009).
+
+Tests: internal/transfers/service_test.go (7: balance movement, INV-006 total
+fixed, same-account 422, amount validation, archived/foreign accounts,
+void reversal + double-void, workspace isolation) + internal/accounts
+reconcile tests (upward and downward signed adjustment, 409 no-op).
+
+Frontend: Transfers page (list, new-transfer modal with source/destination/
+amount, detail + void confirmation), Reconcile modal on each account card.
+
+Verification: go build ./..., go test ./... (52), npm run typecheck/test/build.
+```
 
 ---
 

@@ -8,11 +8,12 @@ import type { Account } from '@/features/accounts/types/account.types';
 interface AccountCardProps {
   account: Account;
   onEdit: (account: Account) => void;
+  onReconcile: (account: Account) => void;
   onArchiveRestore: (id: string, archive: boolean) => Promise<void> | void;
   onChanged: (message: string) => void;
 }
 
-export function AccountCard({ account, onEdit, onArchiveRestore, onChanged }: AccountCardProps) {
+export function AccountCard({ account, onEdit, onReconcile, onArchiveRestore, onChanged }: AccountCardProps) {
   const { auth } = useAuth();
   const [busy, setBusy] = useState(false);
   const currency = account.currency || auth?.workspace.base_currency || 'IDR';
@@ -56,6 +57,9 @@ export function AccountCard({ account, onEdit, onArchiveRestore, onChanged }: Ac
       <div className="mt-4 flex flex-wrap gap-2">
         <Button variant="secondary" onClick={() => onEdit(account)} disabled={busy}>
           Edit
+        </Button>
+        <Button variant="secondary" onClick={() => onReconcile(account)} disabled={busy}>
+          Reconcile
         </Button>
         {account.status === 'ACTIVE' ? (
           <Button
