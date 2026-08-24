@@ -1657,6 +1657,30 @@ The script creates `.env` from `.env.example`, boots PostgreSQL/Redis/MinIO via
 Docker, runs migrations, seeds demo finance data, and starts the API (8080) and
 the web app (5173). Stop everything with `Ctrl-C`.
 
+### `savio` CLI (artisan-style)
+
+Install once so `savio` works from any directory:
+
+```bash
+mkdir -p ~/.local/bin
+ln -s "$(pwd)/scripts/savio" ~/.local/bin/savio
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc   # or ~/.bashrc
+```
+
+Then:
+
+```bash
+savio dev                # boot everything (infra + db + demo + api + web)
+savio migrate            # apply migrations
+savio migrate:down       # rollback last migration
+savio fresh              # drop + migrate + reseed demo
+savio seed               # reload demo data
+savio api / savio web / savio worker
+savio up / savio down / savio ps / savio logs
+savio test / savio lint / savio audit
+savio help               # full command list
+```
+
 Manual breakdown (equivalent steps):
 
 Clone the repository:

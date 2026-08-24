@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Savio CLI — artisan-like commands. Install once:
+#   ln -s "$(pwd)/scripts/savio" /usr/local/bin/savio
+set -euo pipefail
+
+SCRIPT="${BASH_SOURCE[0]:-$0}"
+TARGET="$(readlink "$SCRIPT" 2>/dev/null || true)"
+if [ -n "$TARGET" ]; then
+  case "$TARGET" in
+    /*) SCRIPT="$TARGET" ;;
+    *)  SCRIPT="$(cd "$(dirname "$SCRIPT")" && pwd)/$TARGET" ;;
+  esac
+fi
+ROOT="$(cd "$(dirname "$SCRIPT")/.." && pwd)"
+cmd="${1:-help}"
+
+case "$cmd" in
+  dev)                        "${ROOT}/scripts/dev.sh" ;;
+  migrate|migrate:up)        make -C "$ROOT" migrate-up ;;
+  migrate:down)               make -C "$ROOT" migrate-down ;;
+  migrate:force)              MIGRATE_VERSION="${2:?usage: savio migrate:force <version>}" make -C "$ROOT" migrate-force ;;
+  fresh|fresh-db)             make -C "$ROOT" fresh-db ;;
+  seed)                       make -C "$ROOT" seed-demo ;;
+  api)                        make -C "$ROOT" dev-api ;;
+  web)                        make -C "$ROOT" dev-web ;;
+  worker)                     make -C "$ROOT" dev-worker ;;
+  up|infra:up)                make -C "$ROOT" infra-up ;;
+  down|infra:down)            make -C "$ROOT" infra-down ;;
+  ps)                         make -C "$ROOT" ps ;;
+  logs)                       make -C "$ROOT" infra-logs ;;
+  test)                       make -C "$ROOT" test ;;
+  test:backend)               make -C "$ROOT" test-backend ;;
+  test:frontend)              make -C "$ROOT" test-frontend ;;
+  lint)                       make -C "$ROOT" lint ;;
+  audit)                      make -C "$ROOT" audit ;;
+  help|-h|--help)             cat <<'EOF'
+Savio CLI
+
+Usage: savio <command>
+
+  dev              boot everything (infra + db + demo + api + web)
+  api              run backend only
+  web              run frontend only
+  worker           run background worker
+  up / infra:up    start infra (postgres redis minio)
+  down / infra:down  stop infra
+  ps               infra status
+  logs             follow infra logs
+  migrate          apply migrations
+  migrate:down     rollback last migration
+  migrate:force V  force migration version
+  fresh            drop + migrate + reseed demo
+  seed             reload demo data
+  test             backend + frontend tests
+  lint             go vet + typecheck
+  audit            full verification suite
+EOF
+  ;;
+  *) echo "unknown command: $cmd (try: savio help)" >&2; exit 1 ;;
+esac
