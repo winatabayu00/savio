@@ -394,7 +394,7 @@ features/transactions/
 │   ├── use-transactions.ts
 │   ├── use-create-transaction.ts
 │   ├── use-update-transaction.ts
-│   └── use-reverse-transaction.ts
+│   └── use-void-transaction.ts
 │
 ├── pages/
 │   ├── transaction-list-page.tsx
@@ -1484,24 +1484,24 @@ Actions:
 ```text
 Edit
 
-Reverse
+Void
 ```
 
 ---
 
-# 54. Reverse Transaction UX
+# 54. Void Transaction UX
 
 Confirmation:
 
 ```text
-Reverse this transaction?
+Void this transaction?
 
 The original financial effect will be reversed and your account balance will be updated.
 
 Reason:
 [                         ]
 
-[Cancel] [Reverse Transaction]
+[Cancel] [Void Transaction]
 ```
 
 This should feel more intentional than a generic delete.
@@ -1600,7 +1600,7 @@ Edit
 
 Pause
 
-Cancel
+End
 ```
 
 ---
@@ -1614,14 +1614,12 @@ ACTIVE
 
 PAUSED
 
-COMPLETED
-
-CANCELLED
+ENDED
 ```
 
 Use consistent badges.
 
-Do not make cancelled rules look editable as active rules.
+Do not make ended rules look editable as active rules.
 
 ---
 
@@ -3707,13 +3705,13 @@ Avoid using toast as the only place for important validation failures.
 Required for:
 
 ```text
-reverse transaction
+void transaction
 
-reverse transfer
+void transfer
+
+end recurring rule
 
 archive account
-
-cancel recurring rule
 
 revoke session
 
@@ -3735,7 +3733,7 @@ Are you sure?
 Preferred:
 
 ```text
-Reverse this transfer?
+Void this transfer?
 
 Rp1.000.000 will be returned to BCA Main and removed from GoPay.
 ```
@@ -4013,7 +4011,7 @@ ARCHIVED
 
 POSTED
 
-REVERSED
+VOIDED
 
 ON_TRACK
 
@@ -5652,9 +5650,9 @@ pending state
 Use clear destructive styling for:
 
 ```text
-reverse
+void
 
-cancel
+end recurring rule
 
 archive where consequential
 
@@ -6224,7 +6222,7 @@ AI category suggestion
 
 edit
 
-reverse
+void
 
 validation
 

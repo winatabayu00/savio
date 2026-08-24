@@ -612,12 +612,24 @@ for financial amounts.
 Use:
 
 ```text
-PostgreSQL NUMERIC
+PostgreSQL BIGINT
 
-decimal-safe Go type
+integer minor units
+
+ISO currency code
 ```
 
-API monetary values should use decimal-safe strings.
+Money arithmetic uses a decimal-safe representation over integer minor units.
+
+Forbidden:
+
+```text
+floating point
+```
+
+for authoritative amounts.
+
+API monetary values use decimal-safe strings, converted to/from minor units.
 
 Example:
 
@@ -626,6 +638,8 @@ Example:
   "amount": "1500000.00"
 }
 ```
+
+represents 150,000,000 minor units at 2-decimal scale.
 
 ---
 
@@ -926,15 +940,26 @@ Transfers are modeled separately.
 
 # 33. Transaction Status
 
-Preferred P0 lifecycle:
+Canonical P0 lifecycle:
 
 ```text
-POSTED
-
-REVERSED
+DRAFT
+→ POSTED
+→ VOIDED
 ```
 
-Do not add complex transaction workflow unless required.
+A transaction is created as `DRAFT`, becomes `POSTED` when it takes financial effect, and is `VOIDED` to invalidate it.
+
+`POSTED` financial fields (amount, account, type, date) are immutable.
+
+Correction is performed by:
+
+```text
+VOID the original
+→ create a replacement transaction
+```
+
+not by destructive historical editing.
 
 ---
 
@@ -972,7 +997,7 @@ POSTED EXPENSE
 Exclude:
 
 ```text
-REVERSED
+VOIDED
 
 TRANSFER
 
@@ -985,35 +1010,38 @@ unless an endpoint explicitly asks for adjustment activity.
 
 # 36. Transaction Editing
 
-If a posted transaction is editable:
+A still-pending `DRAFT` transaction may be edited before it is posted.
+
+`POSTED` transactions are financially immutable; their financial fields must not be silently rewritten.
+
+To change a posted transaction:
 
 ```text
-validate latest version
-
-preserve audit history
-
-recompute authoritative derived results
+void the original
+→ create a replacement transaction
+→ preserve audit history
+→ recompute authoritative derived results
 ```
 
-Do not silently overwrite without optimistic concurrency protection.
+Never overwrite without optimistic concurrency protection.
 
 ---
 
-# 37. Transaction Reversal
+# 37. Transaction Voiding
 
-Reversal must:
+Voiding must:
 
 ```text
 preserve historical record
 
-mark transaction REVERSED
+mark transaction VOIDED
 
 exclude it from active analytics
 
 recalculate derived balance
 ```
 
-A reversed transaction must not be reversible twice.
+A VOIDED transaction must not be voided twice.
 
 ---
 
@@ -1062,7 +1090,7 @@ Transfers must not count as income or expense.
 
 # 40. Transfer Atomicity
 
-Transfer creation and reversal must be atomic.
+Transfer creation and voiding must be atomic.
 
 No state may exist where:
 
@@ -1101,7 +1129,7 @@ by default.
 Occurrences begin as:
 
 ```text
-PLANNED
+PENDING
 ```
 
 and become actual when:
@@ -1135,7 +1163,7 @@ Do not introduce new status names without updating all contracts.
 Preferred:
 
 ```text
-PLANNED
+PENDING
 
 CONFIRMED
 
@@ -1233,7 +1261,7 @@ Exclude:
 ```text
 transfers
 
-reversed transactions
+voided transactions
 
 adjustments
 ```
@@ -1334,6 +1362,12 @@ explainable
 
 It is not an LLM prediction.
 
+Default horizon:
+
+```text
+90 days
+```
+
 ---
 
 # 55. Forecast Inputs
@@ -1391,16 +1425,22 @@ Use one normalized vocabulary.
 Preferred:
 
 ```text
-CONFIRMED
+KNOWN
 
-RECURRING
+SCHEDULED
 
 ESTIMATED
 
 ASSUMED
 ```
 
-If code/API docs currently use another vocabulary, normalize intentionally rather than silently mixing enums.
+KNOWN: explicitly known future events.
+
+SCHEDULED: generated from recurring rules.
+
+ESTIMATED: derived from historical behavior.
+
+ASSUMED: explicit user assumptions.
 
 ---
 
@@ -2767,7 +2807,7 @@ rollback
 
 concurrency
 
-reversal
+voiding
 
 stale derived state
 ```
@@ -3847,7 +3887,7 @@ Prefer:
 ```text
 archive
 
-reverse
+void
 ```
 
 over hard delete once history exists.
@@ -4286,7 +4326,7 @@ Documentation
 
 [ ] Transfers excluded from income/expense
 
-[ ] Reversed records excluded
+[ ] VOIDED records excluded
 
 [ ] Adjustments treated correctly
 
@@ -4501,7 +4541,7 @@ INV-007
 Transfers do not count as income or expense.
 
 INV-008
-Reversed transactions do not count as active income or expense.
+VOIDED transactions do not count as active income or expense.
 
 INV-009
 Reconciliation creates an adjustment rather than rewriting history.

@@ -193,7 +193,7 @@ session revocation
 
 transaction creation
 
-transaction reversal
+transaction voiding
 
 transfer
 
@@ -2043,7 +2043,7 @@ precision errors can become integrity failures
 Use:
 
 ```text
-NUMERIC / decimal
+BIGINT integer minor units + decimal-safe arithmetic
 ```
 
 ---
@@ -3124,11 +3124,11 @@ TRANSACTION_CREATED
 
 TRANSACTION_UPDATED
 
-TRANSACTION_REVERSED
+TRANSACTION_VOIDED
 
 TRANSFER_CREATED
 
-TRANSFER_REVERSED
+TRANSFER_VOIDED
 
 ACCOUNT_RECONCILED
 ```
@@ -4573,12 +4573,12 @@ but this is outside MVP.
 
 # 264. Financial Integrity UX
 
-When a transaction is reversed, UI should communicate that history is preserved.
+When a transaction is voided, UI should communicate that history is preserved.
 
 Example:
 
 ```text
-REVERSED
+VOIDED
 ```
 
 instead of silently disappearing.
@@ -4725,7 +4725,7 @@ partial transfer cannot commit
 
 duplicate recurring posting blocked
 
-reversal is atomic
+voiding is atomic
 ```
 
 ---

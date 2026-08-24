@@ -133,20 +133,24 @@ for authoritative amounts.
 For Savio MVP, recommended database type:
 
 ```sql
-NUMERIC(20, 2)
+BIGINT
 ```
+
+storing integer minor units.
 
 Example:
 
 ```text
-12000000.00
+1200000000
 ```
+
+represents 12,000,000.00 at a 2-decimal minor-unit scale.
 
 This supports currencies that use decimal fractions.
 
-Application code must use a decimal-safe representation.
+Application code must use a decimal-safe representation over integer minor units.
 
-If the project later adopts integer minor units, that decision must be applied consistently across the entire finance engine.
+API values travel as decimal-safe strings converted to/from minor units, so this decision applies consistently across the entire finance engine.
 
 ---
 
@@ -463,7 +467,7 @@ CREATE TABLE user_settings (
 
     budget_warning_threshold NUMERIC(5,2) NOT NULL DEFAULT 80.00,
 
-    low_balance_threshold NUMERIC(20,2) NULL,
+    low_balance_threshold BIGINT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -514,9 +518,9 @@ CREATE TABLE accounts (
 
     currency CHAR(3) NOT NULL DEFAULT 'IDR',
 
-    initial_balance NUMERIC(20,2) NOT NULL DEFAULT 0,
+    initial_balance BIGINT NOT NULL DEFAULT 0,
 
-    current_balance NUMERIC(20,2) NOT NULL DEFAULT 0,
+    current_balance BIGINT NOT NULL DEFAULT 0,
 
     institution_name VARCHAR(150) NULL,
 
@@ -745,7 +749,7 @@ CREATE TABLE transactions (
 
     type VARCHAR(20) NOT NULL,
 
-    amount NUMERIC(20,2) NOT NULL,
+    amount BIGINT NOT NULL,
 
     transaction_date DATE NOT NULL,
 
@@ -757,7 +761,7 @@ CREATE TABLE transactions (
 
     source VARCHAR(30) NOT NULL DEFAULT 'MANUAL',
 
-    status VARCHAR(20) NOT NULL DEFAULT 'POSTED',
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
 
     adjustment_reason TEXT NULL,
 
@@ -794,8 +798,9 @@ ADJUSTMENT
 Suggested status:
 
 ```text
+DRAFT
 POSTED
-REVERSED
+VOIDED
 ```
 
 Suggested source:
@@ -924,7 +929,7 @@ CREATE TABLE transfers (
 
     destination_account_id UUID NOT NULL,
 
-    amount NUMERIC(20,2) NOT NULL,
+    amount BIGINT NOT NULL,
 
     transfer_date DATE NOT NULL,
 
@@ -964,7 +969,7 @@ Status:
 
 ```text
 POSTED
-REVERSED
+VOIDED
 ```
 
 ---
@@ -1042,7 +1047,7 @@ CREATE TABLE recurring_transactions (
 
     type VARCHAR(20) NOT NULL,
 
-    amount NUMERIC(20,2) NOT NULL,
+    amount BIGINT NOT NULL,
 
     frequency VARCHAR(20) NOT NULL,
 
@@ -1113,8 +1118,7 @@ Supported statuses:
 ```text
 ACTIVE
 PAUSED
-COMPLETED
-CANCELLED
+ENDED
 ```
 
 ---
@@ -1217,7 +1221,7 @@ Suggested statuses:
 
 ```text
 PENDING
-POSTED
+CONFIRMED
 SKIPPED
 FAILED
 ```
@@ -1258,7 +1262,7 @@ CREATE TABLE budgets (
 
     category_id UUID NOT NULL,
 
-    amount NUMERIC(20,2) NOT NULL,
+    amount BIGINT NOT NULL,
 
     period_type VARCHAR(20) NOT NULL DEFAULT 'MONTHLY',
 
@@ -1387,9 +1391,9 @@ CREATE TABLE financial_goals (
 
     description TEXT NULL,
 
-    target_amount NUMERIC(20,2) NOT NULL,
+    target_amount BIGINT NOT NULL,
 
-    current_amount NUMERIC(20,2) NOT NULL DEFAULT 0,
+    current_amount BIGINT NOT NULL DEFAULT 0,
 
     target_date DATE NULL,
 
@@ -1485,7 +1489,7 @@ CREATE TABLE goal_contributions (
 
     user_id UUID NOT NULL,
 
-    amount NUMERIC(20,2) NOT NULL,
+    amount BIGINT NOT NULL,
 
     contribution_date DATE NOT NULL,
 
@@ -1544,15 +1548,15 @@ CREATE TABLE forecast_snapshots (
 
     horizon_days INTEGER NOT NULL,
 
-    opening_balance NUMERIC(20,2) NOT NULL,
+    opening_balance BIGINT NOT NULL,
 
-    ending_balance NUMERIC(20,2) NOT NULL,
+    ending_balance BIGINT NOT NULL,
 
-    minimum_balance NUMERIC(20,2) NOT NULL,
+    minimum_balance BIGINT NOT NULL,
 
-    projected_income NUMERIC(20,2) NOT NULL,
+    projected_income BIGINT NOT NULL,
 
-    projected_expense NUMERIC(20,2) NOT NULL,
+    projected_expense BIGINT NOT NULL,
 
     confidence VARCHAR(20) NOT NULL,
 
@@ -1620,11 +1624,11 @@ CREATE TABLE forecast_events (
 
     direction VARCHAR(10) NOT NULL,
 
-    amount NUMERIC(20,2) NOT NULL,
+    amount BIGINT NOT NULL,
 
     description VARCHAR(255) NULL,
 
-    projected_balance_after NUMERIC(20,2) NOT NULL,
+    projected_balance_after BIGINT NOT NULL,
 
     sequence INTEGER NOT NULL,
 
@@ -1774,7 +1778,7 @@ CREATE TABLE scenario_modifications (
 
     name VARCHAR(180) NOT NULL,
 
-    amount NUMERIC(20,2) NULL,
+    amount BIGINT NULL,
 
     percentage NUMERIC(8,4) NULL,
 
@@ -1885,13 +1889,13 @@ CREATE TABLE scenario_snapshots (
 
     baseline_forecast_snapshot_id UUID NULL,
 
-    baseline_ending_balance NUMERIC(20,2) NOT NULL,
+    baseline_ending_balance BIGINT NOT NULL,
 
-    scenario_ending_balance NUMERIC(20,2) NOT NULL,
+    scenario_ending_balance BIGINT NOT NULL,
 
-    baseline_minimum_balance NUMERIC(20,2) NOT NULL,
+    baseline_minimum_balance BIGINT NOT NULL,
 
-    scenario_minimum_balance NUMERIC(20,2) NOT NULL,
+    scenario_minimum_balance BIGINT NOT NULL,
 
     baseline_savings_rate NUMERIC(10,4) NULL,
 
@@ -2794,14 +2798,14 @@ COMMIT
 
 ---
 
-## Delete / Reverse Transaction
+## Void Transaction
 
 ```text
 BEGIN
 
 Load transaction
 Reverse financial effect
-Mark reversed / delete according to policy
+Mark VOIDED (history preserved)
 Create audit
 
 COMMIT
@@ -3002,41 +3006,42 @@ Risks:
 
 - all financial aggregates must consistently exclude deleted records.
 
-## Option B — Reversal Status
+## Option B — Void Status
 
 ```text
 POSTED
-→ REVERSED
+→ VOIDED
 ```
 
-with reversal metadata.
+with voiding metadata.
 
 Benefits:
 
 - clearer financial audit behavior.
+- posted financial fields remain immutable.
 
-For financial integrity, a **reversal-oriented approach** is preferable if implementation complexity remains manageable.
+For financial integrity, a **void-based approach** is preferable because corrections use VOID + replacement while preserving history.
 
 The final implementation decision must remain consistent throughout analytics.
 
 ---
 
-# 62. Recommended Transaction Reversal Extension
+# 62. Recommended Transaction Voiding Extension
 
 Potential fields:
 
 ```text
-reversed_at
-reversal_reason
-reversed_by
+voided_at
+void_reason
+voided_by
 ```
 
 Example:
 
 ```sql
 ALTER TABLE transactions
-ADD COLUMN reversed_at TIMESTAMPTZ NULL,
-ADD COLUMN reversal_reason TEXT NULL;
+ADD COLUMN voided_at TIMESTAMPTZ NULL,
+ADD COLUMN void_reason TEXT NULL;
 ```
 
 Then analytics count only:
@@ -3055,8 +3060,8 @@ Candidate events:
 
 ```text
 transaction created
-transaction updated
-transaction reversed
+transaction posted
+transaction voided
 transfer created
 recurring rule changed
 account adjustment
@@ -3944,7 +3949,7 @@ check constraints
 
 transaction creation
 transaction correction
-transaction reversal
+transaction voiding
 
 transfer atomicity
 

@@ -2952,14 +2952,14 @@ Primary / Destructive Action
 Example:
 
 ```text
-Reverse this transaction?
+Void this transaction?
 
 The original financial effect will be reversed and your account balance will be recalculated.
 
 Reason
 [                      ]
 
-[Cancel] [Reverse Transaction]
+[Cancel] [Void Transaction]
 ```
 
 ---
@@ -3057,7 +3057,7 @@ muted
 POSTED
 neutral/positive
 
-REVERSED
+VOIDED
 muted/danger
 
 ON_TRACK

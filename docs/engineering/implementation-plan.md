@@ -561,7 +561,7 @@ Benefits:
 ```text
 financial history remains authoritative
 
-reversal becomes easier to reason about
+voiding becomes easier to reason about
 
 reconciliation is represented as adjustment
 
@@ -2057,32 +2057,25 @@ Transfer is handled separately.
 Use:
 
 ```text
-POSTED
-
-REVERSED
+DRAFT
+→ POSTED
+→ VOIDED
 ```
 
-rather than overbuilding a draft workflow.
+A transaction is created as DRAFT and becomes POSTED when it takes financial effect.
 
-A transaction becomes authoritative when created.
+Posted financial fields are immutable.
 
-Corrections may use:
+Correction uses:
 
 ```text
-edit with audit + optimistic version
+void the original
+→ create a replacement transaction
 ```
 
-or:
+preserving audit history and recalculating ledger effects.
 
-```text
-reverse + replacement
-```
-
-Recommended P0 balance:
-
-> Allow edits while preserving audit history and correctly recalculating ledger effects.
-
-Reversal remains available for explicit invalidation.
+DRAFT transactions may be edited before posting.
 
 ---
 
@@ -2127,15 +2120,17 @@ updated_at
 Use:
 
 ```text
-PostgreSQL NUMERIC
+PostgreSQL BIGINT
 +
-decimal-safe Go type
+integer minor units
 ```
+
+with a decimal-safe Go type.
 
 API:
 
 ```text
-decimal string
+decimal string, converted to/from minor units
 ```
 
 ---
@@ -2151,7 +2146,7 @@ GET  /transactions/:id
 
 PATCH /transactions/:id
 
-POST /transactions/:id/reverse
+POST /transactions/:id/void
 ```
 
 ---
@@ -2231,7 +2226,7 @@ create
 
 update
 
-reverse
+void
 ```
 
 ---
@@ -2269,7 +2264,7 @@ Edit Transaction
 
 Transaction Detail
 
-Reverse Confirmation
+Void Confirmation
 ```
 
 ---
@@ -2291,9 +2286,9 @@ update
 
 version conflict
 
-reverse
+void
 
-reversed analytics exclusion
+voided analytics exclusion
 
 workspace isolation
 
@@ -2317,7 +2312,7 @@ pagination
 
 [ ] Version conflicts return 409
 
-[ ] Reversal works
+[ ] Voiding works
 
 [ ] Transaction page polished
 ```
@@ -2367,7 +2362,7 @@ POST /transfers
 
 GET  /transfers/:id
 
-POST /transfers/:id/reverse
+POST /transfers/:id/void
 ```
 
 ---
@@ -2390,7 +2385,7 @@ amount > 0
 
 ## Atomicity
 
-Transfer creation/reversal must be transactional.
+Transfer creation/voiding must be transactional.
 
 ---
 
@@ -2435,7 +2430,7 @@ Transfer Preview
 
 Transfer Detail
 
-Reverse Transfer
+Void Transfer
 
 Reconcile Account Modal
 ```
@@ -2451,7 +2446,7 @@ same account rejected
 
 cross-workspace rejected
 
-reversal
+voiding
 
 reconciliation positive
 
@@ -2506,17 +2501,7 @@ PAUSED
 ENDED
 ```
 
-If existing implementation/docs use:
-
-```text
-COMPLETED
-
-CANCELLED
-```
-
-choose one final vocabulary and normalize the whole codebase.
-
-Recommended final product vocabulary:
+The canonical vocabulary is:
 
 ```text
 ACTIVE
@@ -2525,8 +2510,6 @@ PAUSED
 
 ENDED
 ```
-
-because it is simpler.
 
 ---
 
@@ -2609,7 +2592,7 @@ POST /recurring-occurrences/:id/skip
 Recommended:
 
 ```text
-PLANNED
+PENDING
 
 CONFIRMED
 
@@ -2737,7 +2720,7 @@ Exclude:
 ```text
 transfers
 
-reversed transactions
+voided transactions
 
 adjustments from normal income/expense metrics
 ```
@@ -2829,7 +2812,7 @@ expense
 
 transfer exclusion
 
-reversal exclusion
+voided exclusion
 
 adjustment exclusion
 
@@ -2996,7 +2979,7 @@ Projected Risk
 ```text
 monthly spend
 
-reversed expense exclusion
+voided expense exclusion
 
 transfer exclusion
 
@@ -3319,9 +3302,9 @@ calculation version
 ## Event Types
 
 ```text
-CONFIRMED
+KNOWN
 
-RECURRING
+SCHEDULED
 
 ESTIMATED
 
@@ -5731,7 +5714,7 @@ These invariants must remain visible throughout implementation.
 
 4. Transfers do not count as income or expense.
 
-5. Reversed transactions do not count in analytics.
+5. Voided transactions do not count in analytics.
 
 6. Account balance is reconstructable from ledger state.
 

@@ -519,6 +519,8 @@ Example:
 
 API monetary fields should use decimal-safe representation.
 
+Storage uses BIGINT integer minor units; the API transports decimal strings converted to/from minor units (2-decimal scale by default).
+
 Recommended JSON representation:
 
 ```json
@@ -1466,12 +1468,18 @@ GET    /api/v1/transactions
 POST   /api/v1/transactions
 GET    /api/v1/transactions/:id
 PATCH  /api/v1/transactions/:id
-POST   /api/v1/transactions/:id/reverse
+POST   /api/v1/transactions/:id/void
 ```
+
+PATCH is limited to still-pending DRAFT transactions.
+
+Posted transactions are financially immutable.
+
+Correction is performed by voiding the original and creating a replacement transaction.
 
 Hard delete is not recommended for posted financial records.
 
-Reversal is preferred.
+Voiding is preferred.
 
 ---
 
@@ -1727,9 +1735,9 @@ load existing transaction
 ↓
 verify ownership
 ↓
-verify version
+verify transaction is DRAFT (still-pending)
 ↓
-reverse old balance effect
+verify version
 ↓
 apply new balance effect
 ↓
@@ -1739,6 +1747,8 @@ increment version
 ↓
 commit
 ```
+
+PATCH on a POSTED transaction is rejected with `409 TRANSACTION_IMMUTABLE`; correct the record by voiding it and creating a replacement.
 
 Response:
 
@@ -1761,10 +1771,10 @@ Response:
 
 ---
 
-# 54. Reverse Transaction
+# 54. Void Transaction
 
 ```http
-POST /api/v1/transactions/:id/reverse
+POST /api/v1/transactions/:id/void
 ```
 
 Request:
@@ -1783,15 +1793,15 @@ Response:
   "success": true,
   "data": {
     "id": "transaction-uuid",
-    "status": "REVERSED",
-    "reversed_at": "2026-08-24T15:30:00Z",
-    "reversal_reason": "Duplicate transaction.",
+    "status": "VOIDED",
+    "voided_at": "2026-08-24T15:30:00Z",
+    "void_reason": "Duplicate transaction.",
     "version": 3
   }
 }
 ```
 
-Financial effect must be reversed atomically.
+The financial effect must be voided atomically and the historical record preserved.
 
 ---
 
@@ -1809,7 +1819,7 @@ Endpoints:
 GET  /api/v1/transfers
 POST /api/v1/transfers
 GET  /api/v1/transfers/:id
-POST /api/v1/transfers/:id/reverse
+POST /api/v1/transfers/:id/void
 ```
 
 ---
@@ -1885,10 +1895,10 @@ Response:
 
 ---
 
-# 58. Reverse Transfer
+# 58. Void Transfer
 
 ```http
-POST /api/v1/transfers/:id/reverse
+POST /api/v1/transfers/:id/void
 ```
 
 Request:
@@ -1900,7 +1910,7 @@ Request:
 }
 ```
 
-Backend must atomically reverse both account effects.
+Backend must atomically void both account effects.
 
 ---
 
@@ -1922,7 +1932,7 @@ PATCH /api/v1/recurring-transactions/:id
 
 POST /api/v1/recurring-transactions/:id/pause
 POST /api/v1/recurring-transactions/:id/resume
-POST /api/v1/recurring-transactions/:id/cancel
+POST /api/v1/recurring-transactions/:id/end
 
 GET  /api/v1/recurring-transactions/:id/occurrences
 ```
@@ -2031,10 +2041,10 @@ Response:
 
 ---
 
-# 63. Cancel Recurring
+# 63. End Recurring
 
 ```http
-POST /api/v1/recurring-transactions/:id/cancel
+POST /api/v1/recurring-transactions/:id/end
 ```
 
 Request:
@@ -2052,13 +2062,13 @@ Response:
   "success": true,
   "data": {
     "id": "recurring-uuid",
-    "status": "CANCELLED",
+    "status": "ENDED",
     "version": 4
   }
 }
 ```
 
-Cancellation does not reverse already posted transactions.
+Ending a recurring rule does not alter already posted occurrences.
 
 ---
 
@@ -2077,7 +2087,7 @@ Response:
     {
       "id": "occurrence-uuid",
       "occurrence_date": "2026-08-25",
-      "status": "POSTED",
+      "status": "CONFIRMED",
       "transaction_id": "transaction-uuid",
       "generated_at": "2026-08-25T00:05:00Z"
     }
@@ -4822,7 +4832,7 @@ other-user account
 archived account
 update amount
 update account
-reverse transaction
+void transaction
 version conflict
 concurrent writes
 ```
@@ -4839,7 +4849,7 @@ same account rejected
 other-user account rejected
 archived account rejected
 source/destination atomicity
-reversal
+voiding
 version conflict
 ```
 
@@ -5038,7 +5048,7 @@ GET   /api/v1/transactions
 POST  /api/v1/transactions
 GET   /api/v1/transactions/:id
 PATCH /api/v1/transactions/:id
-POST  /api/v1/transactions/:id/reverse
+POST  /api/v1/transactions/:id/void
 ```
 
 ```text
@@ -5047,7 +5057,7 @@ TRANSFERS
 GET  /api/v1/transfers
 POST /api/v1/transfers
 GET  /api/v1/transfers/:id
-POST /api/v1/transfers/:id/reverse
+POST /api/v1/transfers/:id/void
 ```
 
 ```text
@@ -5060,7 +5070,7 @@ PATCH /api/v1/recurring-transactions/:id
 
 POST /api/v1/recurring-transactions/:id/pause
 POST /api/v1/recurring-transactions/:id/resume
-POST /api/v1/recurring-transactions/:id/cancel
+POST /api/v1/recurring-transactions/:id/end
 
 GET /api/v1/recurring-transactions/:id/occurrences
 ```

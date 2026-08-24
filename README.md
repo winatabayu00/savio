@@ -2238,7 +2238,7 @@ INV-007
 Transfers do not count as income or expense.
 
 INV-008
-Voided/reversed financial records do not count as active income or expense.
+Voided financial records do not count as active income or expense.
 
 INV-009
 Reconciliation creates an adjustment instead of rewriting account history.

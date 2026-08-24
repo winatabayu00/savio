@@ -95,8 +95,8 @@ Examples:
 
 ```text
 Create Transaction
-Update Transaction
-Delete / Reverse Transaction
+Update Draft Transaction
+Void Transaction + Create Replacement
 Create Transfer
 Create Adjustment
 ```
@@ -1000,9 +1000,11 @@ unchanged
 
 ## 12.1 Goal
 
-Correct an existing transaction safely.
+Edit a still-pending DRAFT transaction before it becomes financially effective.
 
-Example:
+Posted transactions are financially immutable; correcting one is done by voiding the original and creating a replacement.
+
+Example (DRAFT correction):
 
 Original:
 
@@ -1030,6 +1032,13 @@ Backend Loads Existing Transaction
    ↓
 Ownership Check
    ↓
+Status Is DRAFT?
+   ├── No
+   │   ↓
+   │  409 TRANSACTION_IMMUTABLE
+   │
+   └── Yes
+       ↓
 Version Matches?
    ├── No
    │   ↓
@@ -1037,11 +1046,7 @@ Version Matches?
    │
    └── Yes
        ↓
-Calculate Old Financial Effect
-       ↓
-Calculate New Financial Effect
-       ↓
-Apply Delta Atomically
+Apply New Financial Effect Atomically
        ↓
 Update Transaction
        ↓
@@ -1066,7 +1071,7 @@ Expense:
 Rp120,000
 ```
 
-Balance correction:
+Balance delta:
 
 ```text
 Additional impact:
@@ -1075,37 +1080,48 @@ Additional impact:
 
 ---
 
-# 13. Delete / Reverse Transaction Flow
+# 13. Void Transaction Flow
 
 ## 13.1 Goal
 
-Remove an incorrect financial transaction without corrupting account state.
+Invalidate an incorrect posted transaction without corrupting account state and without losing history.
+
+Posted transactions are never hard-deleted or destructively rewritten.
 
 ### Flow
 
 ```text
 Transaction Detail
    ↓
-Delete
+Void
    ↓
-Confirmation Dialog
+Confirmation Dialog + Reason
    ↓
 Backend Loads Transaction
    ↓
 Ownership Validation
    ↓
-Reverse Original Financial Effect
-   ↓
-Delete / Soft Delete / Reverse Record
-   ↓
+Status Is POSTED?
+   ├── No
+   │   ↓
+   │  409 ALREADY_VOIDED
+   │
+   └── Yes
+       ↓
+Reverse Original Financial Effect Atomically
+       ↓
+Mark Record VOIDED
+       ↓
 Commit
+   ↓
+(Optional) Create Replacement Transaction
 ```
 
 ---
 
 ## 13.2 Example
 
-Deleting:
+Voiding:
 
 ```text
 Expense:
@@ -1118,6 +1134,8 @@ results in:
 Account:
 +Rp150,000
 ```
+
+and the record remains visible as VOIDED.
 
 ---
 
@@ -3371,10 +3389,10 @@ Potentially destructive actions require confirmation.
 Examples:
 
 ```text
-Delete Transaction
-Reverse Transfer
+Void Transaction
+Void Transfer
 Archive Account
-Cancel Recurring Rule
+End Recurring Rule
 Revoke Session
 ```
 
@@ -3383,7 +3401,7 @@ Confirmation should explain consequence.
 Example:
 
 ```text
-Delete this transaction?
+Void this transaction?
 
 The original financial effect will be reversed
 and your account balance will be recalculated.
@@ -3692,7 +3710,7 @@ Archive Account
 Create Income
 Create Expense
 Edit Transaction
-Delete / Reverse Transaction
+Void Transaction
 
 Transfer
 

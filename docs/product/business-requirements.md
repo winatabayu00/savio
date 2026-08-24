@@ -100,20 +100,21 @@ Financial amounts must not use floating-point arithmetic for authoritative calcu
 Recommended implementation:
 
 Database:
-NUMERIC / DECIMAL
+BIGINT integer minor units
 
 Application:
-decimal-safe representation
+decimal-safe representation over integer minor units
 
-Alternatively, integer minor units may be used where appropriate.
+API:
+decimal-safe strings converted to/from minor units
 
 Examples:
 
 Rp10,000
-→ 10000
+→ 1000000 minor units (2-decimal scale)
 
 USD 10.50
-→ 1050 cents
+→ 1050 minor units
 
 The implementation strategy must be consistent across the system.
 
@@ -171,7 +172,7 @@ Account with transactions
 → archive instead
 
 Posted transaction
-→ may be corrected or reversed
+→ may be voided and replaced
 
 The system must preserve financial integrity.
 
@@ -596,7 +597,29 @@ The account used by a transaction must belong to the authenticated user.
 
 A valid UUID alone is insufficient.
 
-## 8.8 Transaction Date
+## 8.8 Transaction Status
+
+A transaction uses one status:
+
+DRAFT
+→ POSTED
+→ VOIDED
+
+DRAFT
+A pending transaction that has not yet taken financial effect.
+May still be edited.
+
+POSTED
+The transaction is financially effective and updates the account balance.
+Posted financial fields (amount, account, type, date) are immutable.
+
+VOIDED
+The transaction is invalidated without being hard-deleted.
+It is excluded from active income/expense analytics and its balance effect is reversed.
+
+Correction is performed by voiding the original and creating a replacement transaction, preserving audit history.
+
+## 8.9 Transaction Date
 
 Transaction date:
 
@@ -606,46 +629,55 @@ may represent current transactions.
 
 Future transactions should normally use the scheduled financial event system rather than posting immediately.
 
-## 8.9 Transaction Editing
+## 8.10 Transaction Editing
 
-A user may edit a transaction.
+A still-pending DRAFT transaction may be edited before it is posted.
 
-If editing affects:
+Posted transactions are financially immutable.
 
-amount
-account
-type
+To change a posted transaction:
 
-the balance impact must be recalculated atomically.
+- void the original,
+- create a replacement transaction,
+- recompute the derived balance atomically,
+- preserve audit history.
 
 Example:
 
 Old expense:
 Rp100,000
 
-New expense:
+Replacement expense:
 Rp150,000
 
-Difference:
+Net account effect:
 
--Rp50,000
+- reversal of the voided original:
++Rp100,000
 
-must be reflected in account balance.
+- posting of the replacement:
+-Rp150,000
 
-## 8.10 Transaction Deletion
+must both be reflected atomically.
 
-Deletion must correctly reverse the original balance effect.
+Never silently overwrite a posted transaction's financial fields.
+
+## 8.11 Transaction Voiding
+
+Voiding must reverse the original balance effect atomically and preserve the historical record.
 
 Example:
 
-Delete Rp100,000 expense
+Void a Rp100,000 expense
 → account balance +Rp100,000
 
 This operation must be transactional.
 
-Soft delete or reversal may be preferred for auditability.
+A VOIDED transaction must not be voided twice.
 
-## 8.11 Transaction Adjustment
+Voiding is preferred over hard deletion for auditability.
+
+## 8.12 Transaction Adjustment
 
 ADJUSTMENT is intended for explicit reconciliation of account balance.
 
@@ -721,9 +753,9 @@ savings rate
 
 because money remains within the user's financial system.
 
-## 9.6 Transfer Deletion
+## 9.6 Transfer Voiding
 
-Deleting or reversing a transfer must atomically reverse both account effects.
+Voiding a transfer must atomically reverse both account effects.
 
 # 10. Recurring Transactions
 ## 10.1 Purpose
@@ -790,8 +822,7 @@ Supported status:
 
 ACTIVE
 PAUSED
-COMPLETED
-CANCELLED
+ENDED
 ## 10.6 Recurring Lifecycle
 
 Typical lifecycle:
@@ -803,12 +834,13 @@ ACTIVE
 or:
 
 ACTIVE
-→ COMPLETED
+→ ENDED
 
 or:
 
 ACTIVE
-→ CANCELLED
+→ PAUSED
+→ ENDED
 ## 10.7 Scheduled Occurrences
 
 Recurring rules generate future occurrences.
@@ -1839,10 +1871,10 @@ ACCOUNT_ARCHIVED
 
 TRANSACTION_CREATED
 TRANSACTION_UPDATED
-TRANSACTION_DELETED
+TRANSACTION_VOIDED
 
 TRANSFER_CREATED
-TRANSFER_REVERSED
+TRANSFER_VOIDED
 
 BUDGET_CREATED
 BUDGET_UPDATED

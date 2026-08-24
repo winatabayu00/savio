@@ -815,7 +815,7 @@ next occurrence > end_date
 Expected:
 
 ```text
-COMPLETED
+ENDED
 ```
 
 or no next occurrence.
@@ -1190,7 +1190,7 @@ High-priority behavior:
 ```text
 foreign keys
 
-NUMERIC
+BIGINT minor-unit precision
 
 partial indexes
 
@@ -1322,7 +1322,7 @@ move transaction between accounts
 
 change transaction type if allowed
 
-reverse transaction
+void transaction
 
 rollback on failure
 ```
@@ -1429,7 +1429,7 @@ atomically.
 
 ---
 
-# 62. Transaction Reverse Test
+# 62. Transaction Void Test
 
 Expense:
 
@@ -1437,14 +1437,14 @@ Expense:
 Rp500k
 ```
 
-After reversal:
+After voiding:
 
 ```text
 account receives +Rp500k
-transaction status = REVERSED
+transaction status = VOIDED
 ```
 
-A second reversal must be rejected.
+A second void must be rejected.
 
 ---
 
@@ -1477,7 +1477,7 @@ archived-account rejection
 
 atomic rollback
 
-reversal
+voiding
 ```
 
 ---
@@ -1638,7 +1638,7 @@ period
 
 ---
 
-# 73. Reversed Expense Budget Test
+# 73. Voided Expense Budget Test
 
 Expense:
 
@@ -1646,7 +1646,7 @@ Expense:
 Rp500k
 ```
 
-then reversed.
+then voided.
 
 Expected budget spent:
 
@@ -1699,7 +1699,7 @@ GET
 
 PATCH
 
-REVERSE
+VOID
 ```
 
 using other user's transaction.
@@ -2311,7 +2311,7 @@ next-date calculation
 
 pause behavior
 
-cancel behavior
+end behavior
 
 end-date completion
 
@@ -2388,7 +2388,7 @@ worker does not post
 
 ---
 
-# 123. Cancelled Recurring Test
+# 123. Ended Recurring Test
 
 Expected:
 
@@ -3618,7 +3618,7 @@ very small amount
 
 large amount
 
-reversed transactions
+voided transactions
 
 archived accounts
 ```
@@ -4346,7 +4346,7 @@ transfer preserves total portfolio balance
 
 scenario never mutates baseline
 
-transaction reversal restores prior balance
+transaction voiding restores prior balance
 ```
 
 Can be added if time permits.
@@ -4360,11 +4360,11 @@ Important invariants:
 ```text
 Transfer does not change total user portfolio balance.
 
-Create + reverse transaction restores prior account balance.
+Create + void transaction restores prior account balance.
 
 Scenario calculation does not change real account balance.
 
-Reversed expense does not count in expense analytics.
+Voided expense does not count in expense analytics.
 
 A recurring occurrence posts at most once.
 ```
@@ -4391,7 +4391,7 @@ regardless of transfer amount.
 
 ---
 
-# 237. Reversal Invariant
+# 237. Void Invariant
 
 Before transaction:
 
@@ -4405,7 +4405,7 @@ After transaction:
 Y
 ```
 
-After reversal:
+After voiding:
 
 ```text
 X
@@ -5807,7 +5807,7 @@ incorrect transaction delta
 
 transfer double-counting
 
-budget counting reversed expense
+budget counting voided expense
 
 forecast double salary
 ```

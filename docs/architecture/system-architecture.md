@@ -1557,11 +1557,11 @@ Create expense
 
 Edit transaction
 
-Reverse transaction
+Void transaction
 
 Create transfer
 
-Reverse transfer
+Void transfer
 
 Post recurring occurrence
 
@@ -4564,9 +4564,9 @@ balance updates atomic
 
 transfer atomic
 
-transaction edit reverses old effect correctly
+correction uses void + replacement
 
-transaction reversal restores effect
+transaction voiding restores effect
 
 recurring posting idempotent
 
