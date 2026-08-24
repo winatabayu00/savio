@@ -638,6 +638,9 @@ M19 — Frontend Intelligence Experience `[DONE]`
 
 M20 — Background Jobs & Notifications `[DONE]`
 
+M21 — Security Hardening `[DONE]`
+M22 — Testing Hardening `[DONE]`
+
 M16 — AI Foundation `[DONE]`
 M17 — AI Categorization & Insights `[DONE]`
 
@@ -646,6 +649,9 @@ M18 — Savio Copilot `[DONE]`
 M19 — Frontend Intelligence Experience `[DONE]`
 
 M20 — Background Jobs & Notifications `[DONE]`
+
+M21 — Security Hardening `[DONE]`
+M22 — Testing Hardening `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -5114,6 +5120,44 @@ go test -race ./...
 ```
 
 ---
+
+
+M21/M22 implementation status (2026-08-25):
+
+```text
+Security hardening:
+  - baseline middleware already present (X-Content-Type-Options nosniff,
+    X-Frame-Options DENY, Referrer-Policy, CORS with credentials limited to
+    FRONTEND_ORIGIN, Request-ID, recovery without stack leaks); added
+    Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy and
+    Permissions-Policy.
+  - refresh rotation + CSRF double-submit + cookie auth were implemented in
+    M04/M05; cross-workspace IDOR tests exist per module.
+  - new targeted tests: sort allowlist rejects injection payloads
+    ("amount; DROP TABLE transactions" etc., 422), invalid UUID path/query
+    rejected (400/422), concurrent occurrence confirmance posts exactly once.
+  - go test -race ./... passes on the full suite.
+  - govulncheck unavailable in this environment (noted, not run); npm audit:
+    moderate react-router open-redirect (CVE-2025-68470) affects react-router
+    <=7.17 — fix requires a breaking major upgrade; esbuild/vite/vitest dev
+    chain advisories. Both documented as P1 dependency upgrades, deferred to
+    avoid destabilizing P0. No prod runtime dependency vulnerable.
+
+Testing hardening:
+  - backend suites per module (accounts, categories, transactions, transfers,
+    recurring incl. schedule + concurrency, budgets, goals, forecast,
+    scenarios, analytics, AI incl. prompt-injection + cross-workspace,
+    worker idempotency + notification dedup) = 100 tests total.
+  - frontend suites: session refresh single-flight, auth bootstrap, logout
+    cache clear, route guards, ApiError mapping (422 details, 409 reload
+    copy, network safety, 429 distinction) = 10 tests.
+
+Runtime verification (go run ./cmd/api against dev DB + demo seed):
+  login -> 200; /dashboard, /forecast, /analytics, /goals, /budgets,
+  /recurring-transactions, /ai/status, /ai/copilot (calculate_scenario) all
+  return 200 with data. make seed-demo ready (demo@savio.test /
+  DemoPassword!23).
+```
 
 # 44. Milestone M23 — Performance & Observability
 

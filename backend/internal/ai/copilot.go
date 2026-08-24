@@ -202,9 +202,14 @@ func extractAmount(q string) int64 {
 	if m == nil {
 		return 0
 	}
+	numRaw := m[1]
+	// dots separating exactly 3 trailing digits are thousands separators
+	if i := strings.LastIndex(numRaw, "."); i >= 0 && len(numRaw)-i-1 != 2 {
+		numRaw = strings.ReplaceAll(numRaw, ".", "")
+	}
 	var num float64
-	clean := strings.ReplaceAll(strings.ReplaceAll(m[1], ",", ""), ".", "")
-	if parts := strings.SplitN(m[1], ".", 2); len(parts) == 2 {
+	clean := strings.ReplaceAll(strings.ReplaceAll(numRaw, ",", ""), ".", "")
+	if parts := strings.SplitN(numRaw, ".", 2); len(parts) == 2 {
 		natural, _ := strconv.ParseFloat(strings.ReplaceAll(parts[0], ",", ""), 64)
 		frac, _ := strconv.ParseFloat(parts[1], 64)
 		num = natural + frac/100

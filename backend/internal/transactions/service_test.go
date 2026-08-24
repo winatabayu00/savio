@@ -450,3 +450,32 @@ func TestViewerCannotMutateTransactions(t *testing.T) {
 		t.Fatalf("VIEWER create expected 403, got %d", w.Code)
 	}
 }
+func TestListSortInjectionRejected(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	f := fixture(t)
+	r := newRouter(t, f.wsID)
+	for _, sort := range []string{"amount; DROP TABLE transactions", "t.amount DESC,1", "category_id"} {
+		w := doReq(t, r, "GET", "/api/v1/transactions?sort="+url.QueryEscape(sort), f.owner.String(), "")
+		if w.Code != http.StatusUnprocessableEntity {
+			t.Fatalf("sort %q expected 422, got %d", sort, w.Code)
+		}
+	}
+}
+
+func TestListRejectsInvalidUUIDFilters(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	f := fixture(t)
+	r := newRouter(t, f.wsID)
+	w := doReq(t, r, "GET", "/api/v1/transactions?account_id=not-a-uuid", f.owner.String(), "")
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("bad account_id expected 422, got %d", w.Code)
+	}
+	w = doReq(t, r, "GET", "/api/v1/transactions/"+uuid.NewString()[:8], f.owner.String(), "")
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("bad path uuid expected 400, got %d", w.Code)
+	}
+}

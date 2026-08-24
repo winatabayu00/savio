@@ -361,3 +361,59 @@ func TestRecurringConfirmVersionConflict(t *testing.T) {
 		t.Fatalf("version conflict expected 409, got %d %s", w.Code, w.Body.String())
 	}
 }
+func TestConcurrentOccurrenceConfirmPostsOnce(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	f := fixture(t)
+	r := newRouter(t, f.wsID)
+	w := doReq(t, r, "POST", "/api/v1/recurring-transactions", f.owner.String(),
+		`{"account_id":"`+f.acctID.String()+`","type":"EXPENSE","amount":"50000.00","frequency":"MONTHLY","start_date":"2026-08-01"}`)
+	ruleID := decodeBody(t, w)["data"].(map[string]any)["id"].(string)
+	w = doReq(t, r, "GET", "/api/v1/recurring-transactions/"+ruleID+"/occurrences", f.owner.String(), "")
+	occ := decodeBody(t, w)["data"].([]any)[0].(map[string]any)
+	occID := occ["id"].(string)
+	version := int64(occ["version"].(float64))
+
+	svc := recurring.NewService(db)
+	const workers = 8
+	results := make(chan bool, workers)
+	for i := 0; i < workers; i++ {
+		go func() {
+			_, err := svc.Confirm(t.Context(), f.wsID, f.owner, mustParse(t, occID), version)
+			results <- err == nil
+		}()
+	}
+	successes := 0
+	for i := 0; i < workers; i++ {
+		if <-results {
+			successes++
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("expected exactly 1 successful confirm, got %d", successes)
+	}
+	var txCount int64
+	if err := db.Table("transactions").Where("workspace_id = ? AND source = 'RECURRING'", f.wsID).Count(&txCount).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if txCount != 1 {
+		t.Fatalf("expected exactly 1 posted transaction, got %d", txCount)
+	}
+	var confirmed int64
+	if err := db.Table("recurring_occurrences").Where("id = ? AND status = 'CONFIRMED'", mustParse(t, occID)).Count(&confirmed).Error; err != nil {
+		t.Fatalf("confirmed count: %v", err)
+	}
+	if confirmed != 1 {
+		t.Fatalf("occurrence must be CONFIRMED exactly once")
+	}
+}
+
+func mustParse(t *testing.T, s string) uuid.UUID {
+	t.Helper()
+	id, err := uuid.Parse(s)
+	if err != nil {
+		t.Fatalf("parse uuid: %v", err)
+	}
+	return id
+}
