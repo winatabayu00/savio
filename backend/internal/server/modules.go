@@ -6,6 +6,7 @@ import (
 	"github.com/savio/savio/backend/internal/accounts"
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/categories"
+	"github.com/savio/savio/backend/internal/transactions"
 	"github.com/savio/savio/backend/internal/workspaces"
 )
 
@@ -20,6 +21,14 @@ func registerModules(a *App) {
 	registerWorkspaceRoutes(api, a)
 	registerAccountRoutes(api, a)
 	registerCategoryRoutes(api, a)
+	registerTransactionRoutes(api, a)
+}
+
+func registerTransactionRoutes(api *gin.RouterGroup, a *App) {
+	h := transactions.NewHandler(transactions.NewService(a.DB))
+	g := api.Group("/transactions")
+	g.Use(auth.AuthRequired(a.DB, a.Config))
+	transactions.RegisterRoutes(g, h, auth.RequireWrite())
 }
 
 func registerWorkspaceRoutes(api *gin.RouterGroup, a *App) {

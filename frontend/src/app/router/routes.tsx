@@ -8,6 +8,7 @@ import { RegisterPage } from '@/features/auth/pages/register-page';
 import { DashboardPage } from '@/features/dashboard/pages/dashboard-page';
 import { AccountsPage } from '@/features/accounts/pages/accounts-page';
 import { CategoriesPage } from '@/features/categories/pages/categories-page';
+import { TransactionsPage } from '@/features/transactions/pages/transactions-page';
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
       { path: '/dashboard', element: <DashboardPage /> },
       { path: '/accounts', element: <AccountsPage /> },
       { path: '/categories', element: <CategoriesPage /> },
+      { path: '/transactions', element: <TransactionsPage /> },
     ],
   },
   { path: '/', element: <Navigate to="/dashboard" replace /> },

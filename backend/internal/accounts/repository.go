@@ -110,14 +110,21 @@ func (r *Repository) SetStatus(ctx context.Context, workspaceID, id uuid.UUID, s
 // exists. Before M08 the transactions tables do not exist, so the check is a
 // no-op; when they appear it is enforced automatically.
 func (r *Repository) ensureNoLedger(ctx context.Context, workspaceID, id uuid.UUID) error {
-	for _, table := range []string{"transactions", "account_transfers"} {
-		if !r.db.Migrator().HasTable(table) {
+	// columns differ per ledger table; keep joins out of the count
+	checks := []struct {
+		table string
+		where string
+		args  []any
+	}{
+		{"transactions", "workspace_id = ? AND account_id = ?", []any{workspaceID, id}},
+		{"account_transfers", "workspace_id = ? AND (from_account_id = ? OR to_account_id = ?)", []any{workspaceID, id, id}},
+	}
+	for _, chk := range checks {
+		if !r.db.Migrator().HasTable(chk.table) {
 			continue
 		}
 		var n int64
-		if err := r.db.WithContext(ctx).Table(table).
-			Where("workspace_id = ? AND (account_id = ? OR from_account_id = ? OR to_account_id = ?)", workspaceID, id, id, id).
-			Count(&n).Error; err != nil {
+		if err := r.db.WithContext(ctx).Table(chk.table).Where(chk.where, chk.args...).Count(&n).Error; err != nil {
 			return err
 		}
 		if n > 0 {

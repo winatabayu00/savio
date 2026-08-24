@@ -621,6 +621,7 @@ M05 — Workspace Authorization & RBAC `[DONE]`
 M06 — Frontend Foundation & Authentication `[DONE]`
 
 M07 — Accounts & Categories `[DONE]`
+M08 — Transactions & Financial Ledger `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -2481,19 +2482,62 @@ pagination
 ## Definition of Done
 
 ```text
-[ ] Financial ledger authoritative
+[x] Financial ledger authoritative
 
-[ ] Amount precision exact
+[x] Amount precision exact
 
-[ ] Search/filter/sort/pagination work
+[x] Search/filter/sort/pagination work
 
-[ ] Audit events created
+[x] Audit events created
 
-[ ] Version conflicts return 409
+[x] Version conflicts return 409
 
-[ ] Voiding works
+[x] Voiding works
 
-[ ] Transaction page polished
+[x] Transaction page polished
+```
+
+Implementation status (2026-08-25):
+
+```text
+Migration 000002: transactions + audit_logs.
+
+money (internal/platform/money): decimal-safe parse/format over integer minor
+units via math/big (INV-004); API amounts are decimal strings.
+
+transactions module:
+  lifecycle DRAFT → POSTED (via POST /:id/post) → VOIDED (POST /:id/void);
+  POSTED financial fields immutable (PATCH allowed only on DRAFT);
+  INCOME/EXPENSE positive amounts with direction from type; ADJUSTMENT signed
+  (negative reduces balance), created through reconciliation flow;
+  archived accounts reject new activity (409);
+  category type must match transaction type (422);
+  foreign/archived accounts rejected (404/409);
+  optimistic versioning (409); VOIDED excluded from balances automatically;
+  audit entries recorded for create/update/post/void.
+  list supports search (ILIKE), type/account/category/status/date-range
+  filters, allowlisted sort, pagination (page/limit ≤100).
+
+accounts.PostBalanceModifiers now computes derived balance = opening +
+posted ledger effects (INV-005) using the real transactions table; M07's
+guards (ensureNoLedger on delete/modify) turned on automatically.
+
+Account delete/test coverage: posting an expense then deleting the account
+is impossible (BUSINESS_CONFLICT).
+
+Tests (Go integration): 12 cases in internal/transactions/service_test.go
+covering balance movement, category mismatch, foreign/archived accounts,
+draft edit + post, void reversal + double-void rejection, list search/filter/
+pagination, workspace isolation, VIEWER denial. money unit tests + accounts/
+categories suites still green (43 total backend tests).
+
+Frontend: Transactions page with URL-free filter bar (search, type, status,
+account, category, date range), pagination, responsive table (cards on
+mobile via hidden columns), add/edit modal (RHF + Zod, 422 field mapping),
+detail panel with Post/Void/Edit, void confirmation with reason, 409
+conflict messaging.
+
+Verification: go build ./..., go test ./... (43), npm run typecheck/test/build.
 ```
 
 ---

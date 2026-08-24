@@ -39,7 +39,9 @@ func TestMain(m *testing.M) {
 			os.Setenv("DATABASE_URL", testURL.String())
 		}
 	}
-	os.Exit(m.Run())
+	openDB()
+	code := m.Run()
+	os.Exit(code)
 }
 
 func ensureTestDB(adminDSN, testDSN string) {
@@ -83,7 +85,7 @@ func migrateTestDB(dsn string) error {
 
 var db *gorm.DB
 
-func init() {
+func openDB() {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		return
