@@ -1644,6 +1644,21 @@ Never commit real production credentials.
 
 # 19. Local Development Setup
 
+**Fastest start — one command** (infra + DB + demo data + backend + frontend):
+
+```bash
+git clone <repository-url>
+cd savio
+./scripts/dev.sh
+# open http://localhost:5173  (demo: demo@savio.test / DemoPassword!23)
+```
+
+The script creates `.env` from `.env.example`, boots PostgreSQL/Redis/MinIO via
+Docker, runs migrations, seeds demo finance data, and starts the API (8080) and
+the web app (5173). Stop everything with `Ctrl-C`.
+
+Manual breakdown (equivalent steps):
+
 Clone the repository:
 
 ```bash
