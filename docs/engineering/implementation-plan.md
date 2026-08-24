@@ -629,6 +629,11 @@ M12 — Budgets `[DONE]`
 M13 — Basic Financial Goals `[DONE]`
 M14 — Forecast Engine `[DONE]`
 M15 — Scenario Simulator `[DONE]`
+M16 — AI Foundation `[DONE]`
+M17 — AI Categorization & Insights `[DONE]`
+
+M16 — AI Foundation `[DONE]`
+M17 — AI Categorization & Insights `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -4206,17 +4211,39 @@ context minimization
 ## Definition of Done
 
 ```text
-[ ] Provider swappable
+[x] Provider swappable
 
-[ ] Mock works
+[x] Mock works
 
-[ ] AI key server-only
+[x] AI key server-only
 
-[ ] Finance has no AI dependency
+[x] Finance has no AI dependency
 
-[ ] Output validated
+[x] Output validated
 
-[ ] Tools bounded
+[x] Tools bounded
+```
+Implementation status (2026-08-25):
+
+```text
+platform/ai: Provider interface + OpenAI-compatible adapter (chat/completions,
+response_format json, bounded timeout, server-side key) + deterministic Mock
+(used when AI disabled or no credentials). ExtractJSON/RequireString/RwFluent
+validate structured output; unknown enum values rejected; malformed JSON
+rejected. config: AI disabled => no key required, app starts normally.
+
+internal/ai: categorize + insight + status endpoints under /api/v1/ai with
+per-IP rate limits. Categorize sends only candidate category names (context
+minimization) and returns a validated guess. Insight computes deterministic
+cashflow/period-comparison/category facts first, then asks the model for a
+bounded explanation (signal enum validated). AI key never sent to the model;
+authorization context is backend-injected.
+
+Tests: provider unit (mock JSON, fenced extraction, broken output, enum
+validation, empty-config => mock) + endpoint integration (categorize, disabled
+=> 503 + status, invalid output => 422 AI_VALIDATION_FAILED, insight).
+
+Verification: go build ./..., go test ./... (91), go vet clean.
 ```
 
 ---

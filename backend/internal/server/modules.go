@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/savio/savio/backend/internal/accounts"
+	ai2 "github.com/savio/savio/backend/internal/ai"
 	"github.com/savio/savio/backend/internal/analytics"
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/budgets"
@@ -36,6 +37,7 @@ func registerModules(a *App) {
 	registerGoalRoutes(api, a)
 	registerForecastRoutes(api, a)
 	registerScenarioRoutes(api, a)
+	registerAIRoutes(api, a)
 }
 
 func registerTransactionRoutes(api *gin.RouterGroup, a *App) {
@@ -64,6 +66,13 @@ func registerTransferRoutes(api *gin.RouterGroup, a *App) {
 	g := api.Group("/transfers")
 	g.Use(auth.AuthRequired(a.DB, a.Config))
 	transfers.RegisterRoutes(g, h, auth.RequireWrite())
+}
+
+func registerAIRoutes(api *gin.RouterGroup, a *App) {
+	h := ai2.NewHandler(ai2.NewService(a.DB, a.Config))
+	g := api.Group("/ai")
+	g.Use(auth.AuthRequired(a.DB, a.Config))
+	ai2.RegisterRoutes(g, h)
 }
 
 func registerScenarioRoutes(api *gin.RouterGroup, a *App) {
