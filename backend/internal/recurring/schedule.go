@@ -63,6 +63,12 @@ func nextDates(freq string, start time.Time, end *time.Time, horizon time.Time) 
 	return out
 }
 
+// OccurrenceDates is the exported schedule generator used by the forecast
+// engine and workers. It returns deterministic due dates.
+func OccurrenceDates(frequency string, start time.Time, end *time.Time, horizon time.Time) []time.Time {
+	return nextDates(frequency, start, end, horizon)
+}
+
 func firstDayOfMonth(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
 }

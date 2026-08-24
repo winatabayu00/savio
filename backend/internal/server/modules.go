@@ -7,6 +7,7 @@ import (
 	"github.com/savio/savio/backend/internal/analytics"
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/budgets"
+	"github.com/savio/savio/backend/internal/forecast"
 	"github.com/savio/savio/backend/internal/goals"
 	"github.com/savio/savio/backend/internal/categories"
 	"github.com/savio/savio/backend/internal/recurring"
@@ -32,6 +33,7 @@ func registerModules(a *App) {
 	registerAnalyticsRoutes(api, a)
 	registerBudgetRoutes(api, a)
 	registerGoalRoutes(api, a)
+	registerForecastRoutes(api, a)
 }
 
 func registerTransactionRoutes(api *gin.RouterGroup, a *App) {
@@ -60,6 +62,13 @@ func registerTransferRoutes(api *gin.RouterGroup, a *App) {
 	g := api.Group("/transfers")
 	g.Use(auth.AuthRequired(a.DB, a.Config))
 	transfers.RegisterRoutes(g, h, auth.RequireWrite())
+}
+
+func registerForecastRoutes(api *gin.RouterGroup, a *App) {
+	h := forecast.NewHandler(forecast.NewService(a.DB))
+	g := api.Group("/forecast")
+	g.Use(auth.AuthRequired(a.DB, a.Config))
+	forecast.RegisterRoutes(g, h)
 }
 
 func registerGoalRoutes(api *gin.RouterGroup, a *App) {

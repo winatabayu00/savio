@@ -14,6 +14,7 @@ import { RecurringPage } from '@/features/recurring/pages/recurring-page';
 import { AnalyticsPage } from '@/features/analytics/pages/analytics-page';
 import { BudgetsPage } from '@/features/budgets/pages/budgets-page';
 import { GoalsPage } from '@/features/goals/pages/goals-page';
+import { ForecastPage } from '@/features/forecast/pages/forecast-page';
 
 export const router = createBrowserRouter([
   {
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
       { path: '/analytics', element: <AnalyticsPage /> },
       { path: '/budgets', element: <BudgetsPage /> },
       { path: '/goals', element: <GoalsPage /> },
+      { path: '/forecast', element: <ForecastPage /> },
     ],
   },
   { path: '/', element: <Navigate to="/dashboard" replace /> },

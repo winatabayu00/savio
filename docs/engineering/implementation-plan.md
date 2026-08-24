@@ -627,6 +627,7 @@ M10 — Recurring Transactions `[DONE]`
 M11 — Analytics & Dashboard Core `[DONE]`
 M12 — Budgets `[DONE]`
 M13 — Basic Financial Goals `[DONE]`
+M14 — Forecast Engine `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -3772,17 +3773,39 @@ timezone
 ## Definition of Done
 
 ```text
-[ ] Forecast fully deterministic
+[x] Forecast fully deterministic
 
-[ ] No AI dependency
+[x] No AI dependency
 
-[ ] Assumptions visible
+[x] Assumptions visible
 
-[ ] Confidence explainable
+[x] Confidence explainable
 
-[ ] Timeline explainable
+[x] Timeline explainable
 
-[ ] Tests cover edge cases
+[x] Tests cover edge cases
+```
+
+Implementation status (2026-08-25):
+
+```text
+forecast module (internal/forecast):
+  pure deterministic engine; GET /api/v1/forecast?horizon=30|60|90|180|365.
+  inputs: derived liquid balance (opening + posted effects), ACTIVE recurring
+  rules (SCHEDULED), future-dated posted transactions (KNOWN), trailing-90-day
+  average EXPENSE (ESTIMATED). No LLM.
+  outputs: opening/ending/minimum balance + date, projected income/expense,
+  daily timeline, typed events, confidence (LOW <30d, MEDIUM 30-89d,
+  HIGH >=90d), assumptions, calculation_version "1".
+  schedule generator shared with recurring (recurring.OccurrenceDates).
+
+Tests: deterministic + SCHEDULED month-end ordering/projections/min/end/
+timeline + LOW confidence; KNOWN + ESTIMATED baseline with HIGH confidence.
+
+Frontend: Forecast page (horizon selector, summary cards, SVG projection
+chart, event list, assumptions + confidence, stale banner).
+
+Verification: go build ./..., go test ./... (78), npm run typecheck/test/build.
 ```
 
 ---
