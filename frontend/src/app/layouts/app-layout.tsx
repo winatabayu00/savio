@@ -11,6 +11,7 @@ const NAV = [
   { to: '/budgets', label: 'Budgets' },
   { to: '/goals', label: 'Goals' },
   { to: '/forecast', label: 'Forecast' },
+  { to: '/scenarios', label: 'Scenarios' },
   { to: '/categories', label: 'Categories' },
 ];
 

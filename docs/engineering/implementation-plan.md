@@ -628,6 +628,7 @@ M11 — Analytics & Dashboard Core `[DONE]`
 M12 — Budgets `[DONE]`
 M13 — Basic Financial Goals `[DONE]`
 M14 — Forecast Engine `[DONE]`
+M15 — Scenario Simulator `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -4001,15 +4002,43 @@ stale state
 ## Definition of Done
 
 ```text
-[ ] Real financial state never mutated
+[x] Real financial state never mutated
 
-[ ] Scenario deterministic
+[x] Scenario deterministic
 
-[ ] Comparison understandable
+[x] Comparison understandable
 
-[ ] Killer feature demo-ready
+[x] Killer feature demo-ready
 
-[ ] Tests prove isolation
+[x] Tests prove isolation
+```
+Implementation status (2026-08-25):
+
+```text
+Migration 000007: scenarios + scenario_modifications (state + snapshot only).
+
+scenarios module:
+  non-destructive overlay (INV-012): calculation recomputes a fresh forecast
+  baseline, applies modification deltas to the daily timeline, persists the
+  snapshot (baseline + result JSON) — never touches ledger rows.
+  types: ONE_TIME_EXPENSE/INCOME, RECURRING_EXPENSE/INCOME (frequency-aware,
+  shared schedule generator), INCOME_REDUCTION, INCOME_REMOVAL, EXPENSE_REDUCTION.
+  outputs: baseline vs scenario ending/minimum balance, income/expense,
+  cashflow difference, daily overlay timeline, assumptions note,
+  calculation_version "1".
+  stale detection: GET recomputes the baseline; if ending changed the
+  scenario is marked is_stale (freshness never silently presented as current).
+  endpoints: scenarios CRUD, modifications CRUD, calculate, snapshots.
+
+Tests: 4 integration cases — one-time expense delta + zero ledger writes,
+multiple modifications (income/expense deltas + cashflow), recurring monthly
+over 90d, stale detection after a real finance change.
+
+Frontend: Scenario Simulator page — scenario list, builder with modification
+cards (add/remove), Calculate, baseline-vs-scenario metric cards + overlay
+chart, stale banner.
+
+Verification: go build ./..., go test ./... (82), npm run typecheck/test/build.
 ```
 
 ---
