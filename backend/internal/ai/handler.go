@@ -116,8 +116,36 @@ func (h *Handler) Insight(c *gin.Context) {
 	httpx.Success(c, http.StatusOK, res)
 }
 
+type copilotReq struct {
+	Question string `json:"question"`
+	Horizon  int    `json:"horizon"`
+}
+
+func (h *Handler) Copilot(c *gin.Context) {
+	x, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	var req copilotReq
+	if err := httpx.Bind(c, &req); err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	if req.Horizon <= 0 {
+		req.Horizon = 90
+	}
+	res, err := h.svc.Copilot(c.Request.Context(), x.WorkspaceID, req.Question, req.Horizon, time.Now().UTC())
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, res)
+}
+
 func RegisterRoutes(g *gin.RouterGroup, h *Handler) {
 	g.GET("/status", h.Status)
 	g.POST("/categorize", h.Categorize)
 	g.POST("/insight", h.Insight)
+	g.POST("/copilot", h.Copilot)
 }
