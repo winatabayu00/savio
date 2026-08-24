@@ -618,7 +618,7 @@ M04 — Authentication & Session Security `[DONE]`
 
 M05 — Workspace Authorization & RBAC `[DONE]`
 
-M06 — Frontend Foundation & Authentication
+M06 — Frontend Foundation & Authentication `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -1949,19 +1949,50 @@ logout cache clear
 ## Definition of Done
 
 ```text
-[ ] No tokens in localStorage
+[x] No tokens in localStorage
 
-[ ] No tokens in sessionStorage
+[x] No tokens in sessionStorage
 
-[ ] Protected routes work
+[x] Protected routes work
 
-[ ] Refresh single-flight works
+[x] Refresh single-flight works
 
-[ ] 403 does not logout
+[x] 403 does not logout
 
-[ ] 422 maps to form
+[x] 422 maps to form
 
-[ ] Auth UI responsive
+[x] Auth UI responsive
+```
+
+Implementation status (2026-08-25):
+
+```text
+Stack: React 18 + TypeScript + Vite + Tailwind + React Router + Axios +
+TanStack Query + React Hook Form + Zod, under frontend/.
+
+Auth behavior:
+  axios client (shared/api/client.ts): withCredentials, signed double-submit
+  CSRF via GET /auth/csrf + X-CSRF-Token, single-flight refresh, one retry
+  per original request, single unauthorized event per failure streak, 403
+  never logs out, 422 details map to forms, 429/network safe errors.
+
+Auth bootstrap: AuthProvider with UNKNOWN/AUTHENTICATED/UNAUTHENTICATED,
+  bootstraps via GET /auth/me; logout clears query cache and resets state.
+
+Routes: /login, /register via GuestRoute; /dashboard via ProtectedRoute +
+  AppLayout; AppLayout sidebar + sign out, AuthLayout for guest pages.
+
+Tests: tests/unit/session-refresh.test.ts (single-flight, failure, no loop),
+  tests/unit/auth-flows.test.tsx (route guards, logout cache clear).
+
+Verification:
+  npm run typecheck
+  npm run test        (6 tests pass; MSW mocks)
+  npm run build
+
+Docs: docs/architecture/frontend-architecture.md remains the structural
+source of truth and matches the implemented src/app + features + shared
+layout. No OpenAPI file exists in the repo yet.
 ```
 
 ---

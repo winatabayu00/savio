@@ -1,0 +1,92 @@
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { useAuth } from '@/app/providers/auth-provider';
+import { TextField } from '@/shared/components/ui/text-field';
+import { ApiError } from '@/shared/api/client';
+import {
+  registerSchema,
+  type RegisterForm,
+} from '@/features/auth/schemas/auth.schema';
+
+export function RegisterPage() {
+  const { register: registerUser } = useAuth();
+  const navigate = useNavigate();
+  const [formError, setFormError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
+
+  const onSubmit = handleSubmit(async (values) => {
+    setFormError(null);
+    try {
+      await registerUser(values);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 422 && err.details) {
+          for (const [field, message] of Object.entries(err.details)) {
+            setError(field as keyof RegisterForm, { message });
+          }
+        } else {
+          setFormError(err.message);
+        }
+      } else {
+        setFormError('Something went wrong. Please try again.');
+      }
+    }
+  });
+
+  return (
+    <div>
+      <h1 className="text-xl font-semibold">Create your account</h1>
+      <p className="mt-1 text-sm text-gray-500">
+        Your personal cashflow intelligence workspace.
+      </p>
+      <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
+        <TextField
+          label="Name"
+          autoComplete="name"
+          error={errors.name?.message}
+          {...register('name')}
+        />
+        <TextField
+          label="Email"
+          type="email"
+          autoComplete="email"
+          error={errors.email?.message}
+          {...register('email')}
+        />
+        <TextField
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          error={errors.password?.message}
+          {...register('password')}
+        />
+        {formError ? (
+          <p role="alert" className="text-sm text-red-600">
+            {formError}
+          </p>
+        ) : null}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-light disabled:opacity-60"
+        >
+          {isSubmitting ? 'Creating account…' : 'Create account'}
+        </button>
+      </form>
+      <p className="mt-4 text-center text-sm text-gray-500">
+        Already have an account?{' '}
+        <Link to="/login" className="font-medium text-brand hover:underline">
+          Sign in
+        </Link>
+      </p>
+    </div>
+  );
+}
