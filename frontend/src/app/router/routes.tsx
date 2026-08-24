@@ -12,6 +12,7 @@ import { TransactionsPage } from '@/features/transactions/pages/transactions-pag
 import { TransfersPage } from '@/features/transfers/pages/transfers-page';
 import { RecurringPage } from '@/features/recurring/pages/recurring-page';
 import { AnalyticsPage } from '@/features/analytics/pages/analytics-page';
+import { BudgetsPage } from '@/features/budgets/pages/budgets-page';
 
 export const router = createBrowserRouter([
   {
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
       { path: '/transfers', element: <TransfersPage /> },
       { path: '/recurring', element: <RecurringPage /> },
       { path: '/analytics', element: <AnalyticsPage /> },
+      { path: '/budgets', element: <BudgetsPage /> },
     ],
   },
   { path: '/', element: <Navigate to="/dashboard" replace /> },

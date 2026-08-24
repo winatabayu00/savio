@@ -625,6 +625,7 @@ M08 — Transactions & Financial Ledger `[DONE]`
 M09 — Transfers & Reconciliation `[DONE]`
 M10 — Recurring Transactions `[DONE]`
 M11 — Analytics & Dashboard Core `[DONE]`
+M12 — Budgets `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -3322,6 +3323,33 @@ version conflict
 [ ] Duplicate budget prevented
 
 [ ] UI exposes deterministic status
+```
+
+Implementation status (2026-08-25):
+
+```text
+Migration 000005: budgets (partial unique index: one ACTIVE budget per
+category; app additionally enforces period-overlap).
+
+budgets module:
+  ACTIVE/CLOSED persistence status separate from computed ON_TRACK/WARNING/
+  EXCEEDED (derived every request, never stored — AGENTS #48);
+  spent = POSTED EXPENSE transactions for the category within the period
+  (transfers/voided/adjustments excluded);
+  derived: spent, remaining, utilization %, computed status (warning
+  threshold from user_settings.budget_warning_threshold, default 80),
+  projected end-of-period spend + projected overspend (pace projection);
+  PATCH + close with optimistic versioning (409);
+  duplicate (overlap OR per-category active) rejected 409.
+
+Tests: 4 integration cases — derived spend + computed status (incl.
+utilization), duplicate + close-unblocks, voided/transfer exclusion, version
+conflict on PATCH.
+
+Frontend: Budgets page (active/closed tabs, progress bars with status colors,
+remaining + projected overspend, create/edit/close).
+
+Verification: go build ./..., go test ./... (72), npm run typecheck/test/build.
 ```
 
 ---
