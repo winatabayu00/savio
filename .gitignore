@@ -1,0 +1,26 @@
+.idea/
+.vscode/
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Go
+backend/bin/
+backend/tmp/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Test
+frontend/coverage/
+
+# Migrations / DB
+*.db
+*.sqlite
+
+# Logs
+*.log
