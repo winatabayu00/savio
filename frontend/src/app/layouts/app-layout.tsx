@@ -7,6 +7,7 @@ const NAV = [
   { to: '/transactions', label: 'Transactions' },
   { to: '/transfers', label: 'Transfers' },
   { to: '/recurring', label: 'Recurring' },
+  { to: '/analytics', label: 'Analytics' },
   { to: '/categories', label: 'Categories' },
 ];
 

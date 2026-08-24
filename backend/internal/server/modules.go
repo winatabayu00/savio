@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/savio/savio/backend/internal/accounts"
+	"github.com/savio/savio/backend/internal/analytics"
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/categories"
 	"github.com/savio/savio/backend/internal/recurring"
@@ -26,6 +27,7 @@ func registerModules(a *App) {
 	registerTransactionRoutes(api, a)
 	registerTransferRoutes(api, a)
 	registerRecurringRoutes(api, a)
+	registerAnalyticsRoutes(api, a)
 }
 
 func registerTransactionRoutes(api *gin.RouterGroup, a *App) {
@@ -54,6 +56,16 @@ func registerTransferRoutes(api *gin.RouterGroup, a *App) {
 	g := api.Group("/transfers")
 	g.Use(auth.AuthRequired(a.DB, a.Config))
 	transfers.RegisterRoutes(g, h, auth.RequireWrite())
+}
+
+func registerAnalyticsRoutes(api *gin.RouterGroup, a *App) {
+	h := analytics.NewHandler(analytics.NewService(a.DB))
+	g := api.Group("/analytics")
+	g.Use(auth.AuthRequired(a.DB, a.Config))
+	analytics.RegisterRoutes(g, h)
+	dash := api.Group("")
+	dash.Use(auth.AuthRequired(a.DB, a.Config))
+	analytics.RegisterDashboardRoute(dash, h)
 }
 
 func registerRecurringRoutes(api *gin.RouterGroup, a *App) {

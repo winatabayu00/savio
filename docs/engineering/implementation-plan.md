@@ -624,6 +624,7 @@ M07 — Accounts & Categories `[DONE]`
 M08 — Transactions & Financial Ledger `[DONE]`
 M09 — Transfers & Reconciliation `[DONE]`
 M10 — Recurring Transactions `[DONE]`
+M11 — Analytics & Dashboard Core `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -3113,13 +3114,43 @@ cross-workspace isolation
 ## Definition of Done
 
 ```text
-[ ] Dashboard answers current financial position
+[x] Dashboard answers current financial position
 
-[ ] Analytics are deterministic
+[x] Analytics are deterministic
 
-[ ] DB aggregation used
+[x] DB aggregation used
 
-[ ] No duplicated financial formulas in frontend
+[x] No duplicated financial formulas in frontend
+```
+
+Implementation status (2026-08-25):
+
+```text
+analytics module (internal/analytics): PostgreSQL aggregations only (no
+in-memory totals). All metrics = POSTED INCOME/EXPENSE; VOIDED, ADJUSTMENT and
+transfers excluded (AGENTS #35).
+
+Endpoints (all /api/v1/analytics):
+  /cashflow?from&to                 income/expense/net (decimal strings)
+  /categories?from&to               category totals + item counts
+  /period-comparison?from&to&compare_from&compare_to
+  /spending-changes?from&to&compare_from&compare_to   (category deltas)
+  /recurring-expenses               active rules + estimated monthly (frequency scaled)
+/api/v1/dashboard: total balance (opening + posted ledger effects via SQL),
+  per-account derived balances, current calendar-month cashflow, upcoming
+  PENDING occurrences (next 30 days), recent 8 transactions.
+
+Tests: 5 integration cases (exclusions of voided/adjustment/transfer, income/
+expense values, category breakdown aggregation, period comparison, dashboard
+total + shape).
+
+Frontend:
+  Dashboard: balance/income/expense summary cards, upcoming scheduled
+  activity feed, recent activity, planned cashflow note; skeleton loading.
+  Analytics: cashflow card with one-click last-month comparison, category
+  breakdown bars (CSS, no chart dependency).
+
+Verification: go build ./..., go test ./... (68), npm run typecheck/test/build.
 ```
 
 ---
