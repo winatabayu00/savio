@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/savio/savio/backend/internal/auth"
+	"github.com/savio/savio/backend/internal/workspaces"
 )
 
 // registerModules wires every installed feature module onto the router.
@@ -14,6 +15,14 @@ func registerModules(a *App) {
 	api.Use(auth.CSRFRequired(a.Config.CSRFSecret))
 
 	registerAuthRoutes(api, a)
+	registerWorkspaceRoutes(api, a)
+}
+
+func registerWorkspaceRoutes(api *gin.RouterGroup, a *App) {
+	h := workspaces.NewHandler(workspaces.NewService(a.DB))
+	g := api.Group("/workspaces")
+	g.Use(auth.AuthRequired(a.DB, a.Config))
+	workspaces.RegisterRoutes(g, h, auth.RequireOwner())
 }
 
 func registerAuthRoutes(api *gin.RouterGroup, a *App) {

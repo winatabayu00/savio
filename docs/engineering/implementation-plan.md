@@ -616,7 +616,7 @@ M03 — Database Foundation & Migrations `[DONE]`
 
 M04 — Authentication & Session Security `[DONE]`
 
-M05 — Workspace Authorization & RBAC
+M05 — Workspace Authorization & RBAC `[DONE]`
 
 M06 — Frontend Foundation & Authentication
 
@@ -1730,17 +1730,58 @@ member role update rules
 ## Definition of Done
 
 ```text
-[ ] More than one meaningful role exists
+[x] More than one meaningful role exists
 
-[ ] Backend enforces roles
+[x] Backend enforces roles
 
-[ ] Frontend hiding buttons is not sole protection
+[x] Frontend hiding buttons is not sole protection
 
-[ ] Resources workspace-scoped
+[x] Resources workspace-scoped
 
-[ ] Cross-workspace IDOR tests pass
+[x] Cross-workspace IDOR tests pass
 
-[ ] Last OWNER protected
+[x] Last OWNER protected
+```
+
+Implementation status (2026-08-25):
+
+```text
+Authorization context: authctx carries user_id + active_workspace_id +
+workspace_role; built server-side from DB membership (client cannot choose).
+
+Active workspace: default membership auto-selected; optional X-Workspace-ID
+supported (already in M04 AuthRequired).
+
+Endpoints:
+  GET    /api/v1/workspaces/current
+  GET    /api/v1/workspaces/current/members
+  POST   /api/v1/workspaces/current/members
+  PATCH  /api/v1/workspaces/current/members/:memberId
+  DELETE /api/v1/workspaces/current/members/:memberId
+
+Role enforcement: RequireWrite (financial mutations), RequireOwner (member
+management) middleware; last-owner removal/demotion rejected via row-locked
+owner count inside a transaction (INV-003). Invitation simplified to "OWNER
+adds existing user by email"; unknown email returns 422 VALIDATION_ERROR.
+
+Tests:
+  internal/workspaces/service_test.go
+    OwnerFullAccessDrive
+    ViewerReadOnlyAllowedMutationForbidden
+    MemberCannotManageMembers
+    ForeignWorkspaceMemberIDInvisible      (IDOR / INV-019)
+    LastOwnerCannotBeDemotedOrRemoved      (INV-003)
+    OwnershipTransferHappyPath
+    ConcurrentLastOwnerDemotionSerialized  (concurrency / INV-003)
+
+Verification:
+  go build ./... && go vet ./...
+  go test ./...                      (all backend pkgs pass)
+  go test -race ./internal/workspaces/ ./internal/auth/
+
+Docs: docs/api/api-contract.md section 171 + endpoint summary; no OpenAPI
+file exists in the repo yet (per docs/api listing) so no openapi.yaml update.
+Frontend layer arrives in M06.
 ```
 
 ---

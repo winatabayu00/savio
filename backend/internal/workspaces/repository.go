@@ -88,6 +88,78 @@ func (r *Repository) LockMembershipForUpdate(tx *gorm.DB, workspaceID, userID uu
 	return &m, nil
 }
 
+// LockMembershipByID locks a membership within a workspace by its id. The
+// workspace scope makes ids from another workspace invisible (IDOR guard).
+func (r *Repository) LockMembershipByID(tx *gorm.DB, workspaceID, memberID uuid.UUID) (*Membership, error) {
+	var m Membership
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id = ? AND workspace_id = ? AND status = 'ACTIVE'", memberID, workspaceID).
+		First(&m).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errs.NotFound("member not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+// FindMembershipByID finds an active membership by id within a workspace.
+func (r *Repository) FindMembershipByID(ctx context.Context, workspaceID, memberID uuid.UUID) (*Membership, error) {
+	var m Membership
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND workspace_id = ? AND status = 'ACTIVE'", memberID, workspaceID).
+		First(&m).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errs.NotFound("member not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+// MemberSummary pairs a membership with the user's public identity for listing.
+type MemberSummary struct {
+	Membership
+	UserName  string
+	UserEmail string
+}
+
+// ListMembers returns every active member of a workspace with user identity.
+func (r *Repository) ListMembers(ctx context.Context, workspaceID uuid.UUID) ([]MemberSummary, error) {
+	rows := []MemberSummary{}
+	err := r.db.WithContext(ctx).
+		Table("workspace_memberships AS m").
+		Select("m.*, u.name AS user_name, u.email AS user_email").
+		Joins("JOIN users AS u ON u.id = m.user_id").
+		Where("m.workspace_id = ? AND m.status = 'ACTIVE'", workspaceID).
+		Order("m.created_at ASC").
+		Scan(&rows).Error
+	return rows, err
+}
+
+// LockActiveOwners row-locks every active OWNER membership so concurrent
+// demotions/removals serialize against the last-owner invariant, and returns
+// the current owner count. Postgres forbids FOR UPDATE on aggregates, so the
+// rows are locked and counted in Go.
+func (r *Repository) LockActiveOwners(tx *gorm.DB, workspaceID uuid.UUID) (int64, error) {
+	var ids []uuid.UUID
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Model(&Membership{}).
+		Where("workspace_id = ? AND role = ? AND status = 'ACTIVE'", workspaceID, RoleOwner).
+		Pluck("id", &ids).Error
+	return int64(len(ids)), err
+}
+
+func (r *Repository) UpdateMembershipRole(tx *gorm.DB, id uuid.UUID, role string) error {
+	return tx.Model(&Membership{}).Where("id = ?", id).Update("role", role).Error
+}
+
+func (r *Repository) DeleteMembership(tx *gorm.DB, id uuid.UUID) error {
+	return tx.Where("id = ?", id).Delete(&Membership{}).Error
+}
+
 func (r *Repository) GetDB() *gorm.DB { return r.db }
 
 // ListActiveMembershipsForUser returns all active memberships.

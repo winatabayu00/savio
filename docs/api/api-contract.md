@@ -4499,6 +4499,7 @@ auth
 sessions
 profile
 settings
+workspaces
 
 accounts
 categories
@@ -5017,6 +5018,16 @@ PATCH /api/v1/settings
 ```
 
 ```text
+WORKSPACES
+
+GET    /api/v1/workspaces/current
+GET    /api/v1/workspaces/current/members
+POST   /api/v1/workspaces/current/members
+PATCH  /api/v1/workspaces/current/members/:memberId
+DELETE /api/v1/workspaces/current/members/:memberId
+```
+
+```text
 ACCOUNTS
 
 GET    /api/v1/accounts
@@ -5328,3 +5339,143 @@ CLIENT RESPONSE
 The final rule remains:
 
 > **Finance Engine calculates. AI interprets. User decides.**
+
+---
+
+# 171. Workspaces & Members API
+
+## Scope
+
+Workspace discovery and membership management for the active workspace. All
+endpoints require authentication; membership mutations require role OWNER and
+are enforced backend-side (UI hiding is never the only protection).
+
+## Active Workspace
+
+For MVP the active workspace is selected automatically (see milestone M05).
+`X-Workspace-ID` may select a specific active workspace; otherwise the user's
+first default workspace is used. Authorization context always carries the
+resolved workspace and the requester's role.
+
+## Endpoint Summary
+
+```text
+GET    /api/v1/workspaces/current
+GET    /api/v1/workspaces/current/members
+POST   /api/v1/workspaces/current/members
+PATCH  /api/v1/workspaces/current/members/:memberId
+DELETE /api/v1/workspaces/current/members/:memberId
+```
+
+## Roles
+
+```text
+OWNER   read finance, write finance, manage members, change roles, manage workspace
+MEMBER  read finance, write finance
+VIEWER  read-only
+```
+
+## GET /api/v1/workspaces/current
+
+Returns the active workspace and the requester's role.
+
+```json
+{
+  "success": true,
+  "data": {
+    "workspace": {
+      "id": "...",
+      "name": "Adi's Workspace",
+      "base_currency": "IDR",
+      "timezone": "Asia/Jakarta"
+    },
+    "role": "OWNER",
+    "member_count": 3
+  }
+}
+```
+
+## GET /api/v1/workspaces/current/members
+
+Lists active members with their user identity. All roles may read.
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "<membership_id>",
+      "user_id": "...",
+      "name": "Adi",
+      "email": "adi@savio.test",
+      "role": "OWNER",
+      "created_at": "2026-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+## POST /api/v1/workspaces/current/members
+
+OWNER only. Adds an existing Savio user by email with role `MEMBER` (default)
+or `VIEWER`. New members can never be created as OWNER; ownership is only
+transferred via role change of an existing member.
+
+Request:
+
+```json
+{
+  "email": "budi@savio.test",
+  "role": "MEMBER"
+}
+```
+
+Responses:
+
+```text
+201  created
+422  email not found / invalid role / invalid email   (VALIDATION_ERROR)
+409  user is already a member                          (DUPLICATE_RESOURCE)
+403  requester is not OWNER                            (PERMISSION_DENIED)
+```
+
+## PATCH /api/v1/workspaces/current/members/:memberId
+
+OWNER only. Changes a member's role to `OWNER`, `MEMBER` or `VIEWER`.
+
+Request:
+
+```json
+{
+  "role": "VIEWER"
+}
+```
+
+Rules:
+
+```text
+demoting the last OWNER is rejected with 409   (BUSINESS_CONFLICT)
+memberId from another workspace returns 404     (RESOURCE_NOT_FOUND)
+own-role change (ownership transfer) is allowed only when another OWNER exists
+```
+
+## DELETE /api/v1/workspaces/current/members/:memberId
+
+OWNER only. Removes a member. The last OWNER cannot be removed.
+
+Responses:
+
+```text
+200  removed
+409  last owner removal  (BUSINESS_CONFLICT)
+404  unknown member      (RESOURCE_NOT_FOUND)
+403  requester is not OWNER
+```
+
+## Enforcement Notes
+
+```text
+role checks are backend-enforced via RequireOwner middleware and service invariants
+member lookups are workspace-scoped (memberId alone is never authorization)
+last-owner removal/demotion is serialized with row locks (INV-003)
+```
