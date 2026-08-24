@@ -28,8 +28,8 @@ export function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 422 && err.details) {
-          for (const [field, message] of Object.entries(err.details)) {
-            setError(field as keyof LoginForm, { message });
+          for (const [field, messages] of Object.entries(err.details)) {
+            setError(field as keyof LoginForm, { message: messages[0] });
           }
         } else {
           setFormError(err.message);

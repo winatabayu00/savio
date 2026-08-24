@@ -620,6 +620,8 @@ M05 — Workspace Authorization & RBAC `[DONE]`
 
 M06 — Frontend Foundation & Authentication `[DONE]`
 
+M07 — Accounts & Categories `[DONE]`
+
 M07 — Accounts & Categories
 
 M08 — Transactions & Financial Ledger
@@ -2158,15 +2160,49 @@ custom category isolation
 ## Definition of Done
 
 ```text
-[ ] Account CRUD business rules work
+[x] Account CRUD business rules work
 
-[ ] Derived balance endpoint ready
+[x] Derived balance endpoint ready
 
-[ ] Categories seeded
+[x] Categories seeded
 
-[ ] Archived account cannot accept new finance writes
+[x] Archived account cannot accept new finance writes
 
-[ ] VIEWER cannot mutate
+[x] VIEWER cannot mutate
+```
+
+Implementation status (2026-08-25):
+
+```text
+Backend modules: internal/accounts + internal/categories.
+
+accounts:
+  workspace-scoped CRUD; optimistic version (PATCH 409); derived balance =
+  opening + posted ledger modifiers (modifiers mount once the ledger tables
+  exist in M08; guarded by Migrator().HasTable); currency must equal the
+  workspace base currency; archive/restore; delete only when the account has
+  no ledger history (ensureNoLedger auto-turns-on in M08).
+
+categories:
+  system (workspace_id NULL, immutable) + workspace custom; INCOME/EXPENSE
+  enforced; archive/restore; custom isolation; duplicate name+type 409.
+
+Endpoints under /api/v1/accounts and /api/v1/categories; mutations gated by
+auth.RequireWrite (VIEWER → 403).
+
+Tests (Go integration, Postgres): internal/accounts/service_test.go (9),
+internal/categories/service_test.go (6) covering cross-workspace isolation,
+currency rule, validation, duplicate, version conflict, archive/restore,
+system-category immutability, VIEWER denial.
+
+Frontend: accounts page (cards grid, active/archived tabs, create/edit modal,
+archive/restore), categories page (system+custom groups, create modal,
+archive/restore). Routes /accounts and /categories wired into AppLayout.
+
+Verification:
+  go build ./...
+  go test ./... (35 pass; DATABASE_URL required for integration)
+  npm run typecheck / test / build
 ```
 
 ---

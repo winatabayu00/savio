@@ -3,7 +3,9 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/savio/savio/backend/internal/accounts"
 	"github.com/savio/savio/backend/internal/auth"
+	"github.com/savio/savio/backend/internal/categories"
 	"github.com/savio/savio/backend/internal/workspaces"
 )
 
@@ -16,6 +18,8 @@ func registerModules(a *App) {
 
 	registerAuthRoutes(api, a)
 	registerWorkspaceRoutes(api, a)
+	registerAccountRoutes(api, a)
+	registerCategoryRoutes(api, a)
 }
 
 func registerWorkspaceRoutes(api *gin.RouterGroup, a *App) {
@@ -23,6 +27,20 @@ func registerWorkspaceRoutes(api *gin.RouterGroup, a *App) {
 	g := api.Group("/workspaces")
 	g.Use(auth.AuthRequired(a.DB, a.Config))
 	workspaces.RegisterRoutes(g, h, auth.RequireOwner())
+}
+
+func registerAccountRoutes(api *gin.RouterGroup, a *App) {
+	h := accounts.NewHandler(accounts.NewService(a.DB))
+	g := api.Group("/accounts")
+	g.Use(auth.AuthRequired(a.DB, a.Config))
+	accounts.RegisterRoutes(g, h, auth.RequireWrite())
+}
+
+func registerCategoryRoutes(api *gin.RouterGroup, a *App) {
+	h := categories.NewHandler(categories.NewService(a.DB))
+	g := api.Group("/categories")
+	g.Use(auth.AuthRequired(a.DB, a.Config))
+	categories.RegisterRoutes(g, h, auth.RequireWrite())
 }
 
 func registerAuthRoutes(api *gin.RouterGroup, a *App) {

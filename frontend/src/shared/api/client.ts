@@ -6,20 +6,20 @@ import axios, {
 
 export interface ApiErrorBody {
   success: false;
-  error: { code?: string; details?: Record<string, string> | null };
+  error: { code?: string; details?: Record<string, string[]> | null };
   message?: string;
 }
 
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
-  readonly details?: Record<string, string> | null;
+  readonly details?: Record<string, string[]> | null;
 
   constructor(
     status: number,
     code: string | undefined,
     message: string,
-    details?: Record<string, string> | null,
+    details?: Record<string, string[]> | null,
   ) {
     super(message);
     this.name = 'ApiError';

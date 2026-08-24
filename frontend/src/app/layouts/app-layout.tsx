@@ -3,6 +3,8 @@ import { useAuth } from '@/app/providers/auth-provider';
 
 const NAV = [
   { to: '/dashboard', label: 'Dashboard' },
+  { to: '/accounts', label: 'Accounts' },
+  { to: '/categories', label: 'Categories' },
 ];
 
 export function AppLayout() {

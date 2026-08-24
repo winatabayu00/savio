@@ -29,8 +29,8 @@ export function RegisterPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 422 && err.details) {
-          for (const [field, message] of Object.entries(err.details)) {
-            setError(field as keyof RegisterForm, { message });
+          for (const [field, messages] of Object.entries(err.details)) {
+            setError(field as keyof RegisterForm, { message: messages[0] });
           }
         } else {
           setFormError(err.message);

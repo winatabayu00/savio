@@ -6,6 +6,8 @@ import { AuthLayout } from '@/app/layouts/auth-layout';
 import { LoginPage } from '@/features/auth/pages/login-page';
 import { RegisterPage } from '@/features/auth/pages/register-page';
 import { DashboardPage } from '@/features/dashboard/pages/dashboard-page';
+import { AccountsPage } from '@/features/accounts/pages/accounts-page';
+import { CategoriesPage } from '@/features/categories/pages/categories-page';
 
 export const router = createBrowserRouter([
   {
@@ -37,6 +39,8 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: '/dashboard', element: <DashboardPage /> },
+      { path: '/accounts', element: <AccountsPage /> },
+      { path: '/categories', element: <CategoriesPage /> },
     ],
   },
   { path: '/', element: <Navigate to="/dashboard" replace /> },
