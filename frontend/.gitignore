@@ -8,3 +8,5 @@ coverage/
 # Vite
 .vite/
 *.local
+# TS build cache
+*.tsbuildinfo
