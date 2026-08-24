@@ -12,6 +12,8 @@ const NAV = [
   { to: '/goals', label: 'Goals' },
   { to: '/forecast', label: 'Forecast' },
   { to: '/scenarios', label: 'Scenarios' },
+  { to: '/insights', label: 'Insights' },
+  { to: '/copilot', label: 'Copilot' },
   { to: '/categories', label: 'Categories' },
 ];
 

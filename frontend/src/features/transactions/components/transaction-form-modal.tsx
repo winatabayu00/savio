@@ -10,6 +10,7 @@ import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { useCategories } from '@/features/categories/hooks/use-categories';
 import { useTransactionMutations } from '@/features/transactions/hooks/use-transactions';
 import type { Transaction, TransactionType } from '@/features/transactions/types/transaction.types';
+import { suggestCategory } from '@/features/ai/api/ai.api';
 
 const formSchema = z.object({
   type: z.enum(['INCOME', 'EXPENSE']),
@@ -37,6 +38,8 @@ export function TransactionFormModal({ open, onClose, onError, editTx }: Props) 
   const categories = useCategories();
   const { create, update, post } = useTransactionMutations();
   const [formError, setFormError] = useState<string | null>(null);
+  const [aiHint, setAiHint] = useState<string | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
   // ponytail: single schema for create/edit flows
   void formSchema;
 
@@ -45,6 +48,7 @@ export function TransactionFormModal({ open, onClose, onError, editTx }: Props) 
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -77,8 +81,31 @@ export function TransactionFormModal({ open, onClose, onError, editTx }: Props) 
   }, [open, editTx, reset]);
 
   const txType = (watch('type') ?? 'EXPENSE') as TransactionType;
+  const description = watch('description');
+  const merchant = watch('merchant');
   const filteredCategories =
     categories.data?.filter((c) => (txType === 'INCOME' ? c.type === 'INCOME' : c.type === 'EXPENSE')) ?? [];
+
+  const onSuggest = async () => {
+    setAiBusy(true);
+    setAiHint(null);
+    try {
+      const res = await suggestCategory(description || merchant || '', merchant || '');
+      const match = filteredCategories.find(
+        (c) => c.name.toLowerCase() === res.category_guess.toLowerCase(),
+      );
+      if (match) {
+        setValue('category_id', match.id);
+        setAiHint(`AI suggested: ${res.category_guess}`);
+      } else {
+        setAiHint(`AI guessed "${res.category_guess}" but it is not one of your categories yet.`);
+      }
+    } catch (err) {
+      setFormError((err as ApiError)?.message ?? 'AI category suggestion is unavailable.');
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -152,6 +179,15 @@ export function TransactionFormModal({ open, onClose, onError, editTx }: Props) 
             ))}
           </select>
           {errors.category_id ? <p className="mt-1 text-xs text-red-600">{errors.category_id.message}</p> : null}
+          <button
+            type="button"
+            onClick={() => void onSuggest()}
+            disabled={aiBusy || (!description && !merchant)}
+            className="mt-2 text-xs font-medium text-brand hover:underline disabled:opacity-50"
+          >
+            {aiBusy ? 'Asking AI…' : 'Suggest category with AI'}
+          </button>
+          {aiHint ? <p className="mt-1 text-xs text-brand">{aiHint}</p> : null}
         </div>
         <TextField label="Date" type="date" error={errors.transaction_date?.message} {...register('transaction_date')} />
         <TextField label="Description" placeholder="e.g. Grocery shopping" error={errors.description?.message} {...register('description')} />
