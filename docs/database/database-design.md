@@ -81,7 +81,9 @@ The schema should follow these principles:
 4. Preserve financial history.
 5. Avoid floating-point financial arithmetic.
 6. Separate real financial data from projections and simulations.
-7. Scope all user-owned resources by `user_id`.
+7. Scope financial resources by `workspace_id` (see section 3.1). Users are
+   keyed by `id`; financial entities belong to a workspace, and audit fields
+   record `created_by_user_id` for actor identity.
 8. Use archive/status semantics when deletion would destroy financial history.
 9. Use transactional writes for balance-affecting operations.
 10. Support optimistic concurrency for important mutable entities.
@@ -90,6 +92,47 @@ The schema should follow these principles:
 13. Preserve auditability for important financial actions.
 14. Store timestamps in UTC.
 15. Preserve user-local financial dates separately where necessary.
+
+## 3.1 Workspace Scoping Correction
+
+Some earlier sections below were authored before the workspace authorization
+decision and reference `user_id` on financial tables. The implemented schema
+follows the workspace model in `docs/engineering/implementation-plan.md`
+(sections 9–13) and `AGENTS.md`:
+
+```text
+Financial resources are scoped by workspace_id:
+accounts.workspace_id
+transactions.workspace_id
+transfers.workspace_id
+categories.workspace_id  (NULL for system categories)
+recurring_rules.workspace_id
+budgets.workspace_id
+goals.workspace_id
+scenarios.workspace_id
+forecast_snapshots.workspace_id
+ai_insights.workspace_id
+```
+
+Identity tables remain user-scoped:
+
+```text
+users             (user.id)
+auth_sessions     (user_id)
+user_settings     (user_id)
+```
+
+Ownership of a financial row is proven by a row-scoped query such as:
+
+```sql
+WHERE workspace_id = $1 AND id = $2
+```
+
+plus membership verification in service code. A valid foreign key alone is
+not ownership. Actor identity is preserved via `created_by_user_id`.
+
+Within a single-user default workspace this preserves personal-finance
+simplicity while still supporting backend-enforced multi-role authorization.
 
 ---
 
