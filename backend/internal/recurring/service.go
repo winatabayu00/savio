@@ -2,6 +2,7 @@ package recurring
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -20,9 +21,9 @@ const ForecastHorizon = 90 * 24 * time.Hour
 // Service owns recurring-rule behavior: schedule generation, lifecycle and
 // occurrence confirmation (the only path that writes actual ledger history).
 type Service struct {
-	db   *gorm.DB
-	repo *Repository
-	tx   *transactions.Service
+	db    *gorm.DB
+	repo  *Repository
+	tx    *transactions.Service
 	audit *audit.Repository
 }
 
@@ -61,24 +62,24 @@ type UpdateInput struct {
 }
 
 type View struct {
-	ID            uuid.UUID  `json:"id"`
-	AccountID     uuid.UUID  `json:"account_id"`
-	CategoryID    *uuid.UUID `json:"category_id"`
-	Type          string     `json:"type"`
-	Amount        string     `json:"amount"`
-	Frequency     string     `json:"frequency"`
-	StartDate     string     `json:"start_date"`
-	EndDate       *string    `json:"end_date"`
-	Description   *string    `json:"description"`
-	Merchant      *string    `json:"merchant"`
-	Notes         *string    `json:"notes"`
-	Status        string     `json:"status"`
-	AutoPost      bool       `json:"auto_post"`
-	Version       int64      `json:"version"`
-	AccountName   string     `json:"account_name"`
-	CategoryName  string     `json:"category_name"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID           uuid.UUID  `json:"id"`
+	AccountID    uuid.UUID  `json:"account_id"`
+	CategoryID   *uuid.UUID `json:"category_id"`
+	Type         string     `json:"type"`
+	Amount       string     `json:"amount"`
+	Frequency    string     `json:"frequency"`
+	StartDate    string     `json:"start_date"`
+	EndDate      *string    `json:"end_date"`
+	Description  *string    `json:"description"`
+	Merchant     *string    `json:"merchant"`
+	Notes        *string    `json:"notes"`
+	Status       string     `json:"status"`
+	AutoPost     bool       `json:"auto_post"`
+	Version      int64      `json:"version"`
+	AccountName  string     `json:"account_name"`
+	CategoryName string     `json:"category_name"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 func (s *Service) Create(ctx context.Context, workspaceID, userID uuid.UUID, in *CreateInput) (*View, error) {
@@ -329,6 +330,57 @@ func (s *Service) generateUnbound(ctx context.Context, workspaceID uuid.UUID, rt
 		})
 	}
 	return s.repo.UpsertOccurrences(ctx, occs)
+}
+
+// AutoPostDue confirms PENDING due occurrences of ACTIVE auto_post rules.
+// Each confirm is atomic and guarded by the (rule, due_date) unique
+// constraint, so concurrent workers can never post an occurrence twice
+// (INV-010). Returns the number of newly posted occurrences.
+func (s *Service) AutoPostDue(ctx context.Context, now time.Time) (int, error) {
+	ctx = context.WithoutCancel(ctx)
+	var occs []struct {
+		ID          uuid.UUID
+		WorkspaceID uuid.UUID
+		Version     int64
+	}
+	err := s.db.WithContext(ctx).Raw(`
+		SELECT o.id, o.workspace_id, o.version
+		FROM recurring_occurrences o
+		JOIN recurring_transactions rt ON rt.id = o.recurring_id
+		WHERE o.status = 'PENDING'
+			AND rt.status = 'ACTIVE' AND rt.auto_post = TRUE
+			AND o.due_date <= $1
+		ORDER BY o.due_date ASC
+		LIMIT 200`, now.Format("2006-01-02")).Scan(&occs).Error
+	if err != nil {
+		return 0, err
+	}
+	posted := 0
+	var firstErr error
+	for _, o := range occs {
+		if _, err := s.Confirm(ctx, o.WorkspaceID, uuid.Nil, o.ID, o.Version); err != nil {
+			if !isConflict(err) {
+				if firstErr == nil {
+					firstErr = err
+				}
+			}
+			continue
+		}
+		posted++
+	}
+	return posted, firstErr
+}
+
+// isConflict reports whether an error is an expected concurrent-race outcome.
+func isConflict(err error) bool {
+	if err == nil {
+		return false
+	}
+	var appErr *errs.Error
+	if errors.As(err, &appErr) {
+		return appErr.Code == errs.CodeVersionConflict || appErr.Code == errs.CodeBusinessConflict
+	}
+	return false
 }
 
 func (s *Service) loadAccount(ctx context.Context, workspaceID, accountID uuid.UUID) (string, error) {

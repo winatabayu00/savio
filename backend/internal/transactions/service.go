@@ -143,12 +143,14 @@ func (s *Service) create(ctx context.Context, dbIn *gorm.DB, workspaceID, userID
 		Source:          defaultSource(in.Source),
 		Status:          status,
 		Version:         1,
-		CreatedByUserID: &userID,
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
 	if status == string(StatusPosted) {
 		t.PostedAt = &now
+	}
+	if userID != uuid.Nil {
+		t.CreatedByUserID = &userID
 	}
 	if err := q.WithContext(ctx).Create(t).Error; err != nil {
 		return nil, err

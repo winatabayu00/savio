@@ -636,12 +636,16 @@ M18 — Savio Copilot `[DONE]`
 
 M19 — Frontend Intelligence Experience `[DONE]`
 
+M20 — Background Jobs & Notifications `[DONE]`
+
 M16 — AI Foundation `[DONE]`
 M17 — AI Categorization & Insights `[DONE]`
 
 M18 — Savio Copilot `[DONE]`
 
 M19 — Frontend Intelligence Experience `[DONE]`
+
+M20 — Background Jobs & Notifications `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -4850,13 +4854,37 @@ notification dedup
 ## Definition of Done
 
 ```text
-[ ] Worker shares domain services
+[x] Worker shares domain services
 
-[ ] No duplicate business logic
+[x] No duplicate business logic
 
-[ ] Jobs idempotent
+[x] Jobs idempotent
 
-[ ] Queue failure isolated
+[x] Queue failure isolated
+```
+Implementation status (2026-08-25):
+
+```text
+Migration 000008: notifications (plain `day` column for dedup, avoiding
+non-immutable expression-index issues on timestamptz).
+
+cmd/worker + internal/worker:
+  polling loop (WORKER_INTERVAL_SECONDS); jobs call shared domain services:
+  recurring.AutoPostDue (posts due PENDING occurrences of ACTIVE auto_post
+  rules; each confirm is a locked DB transaction guarded by the
+  (rule, due_date) unique constraint => concurrent workers can never double-
+  post; non-conflict errors surfaced, race conflicts skipped) and a
+  notifications sweep (low-balance + budget warning/exceeded; dedup via
+  unique (workspace, type, day) + ON CONFLICT DO NOTHING).
+
+transactions.create: skips created_by FK when no real user (worker uses
+uuid.Nil).
+
+Tests: worker integration — auto-post idempotency (posted count, second run
+posts 0, balance moved once) and notification dedup (two sweeps => exactly
+one row). go test -race ./... clean on the suite.
+
+Verification: go build ./..., go test ./... (97), go test -race ./... (97).
 ```
 
 ---
