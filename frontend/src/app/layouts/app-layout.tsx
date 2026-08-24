@@ -9,6 +9,7 @@ const NAV = [
   { to: '/recurring', label: 'Recurring' },
   { to: '/analytics', label: 'Analytics' },
   { to: '/budgets', label: 'Budgets' },
+  { to: '/goals', label: 'Goals' },
   { to: '/categories', label: 'Categories' },
 ];
 

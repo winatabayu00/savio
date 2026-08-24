@@ -626,6 +626,7 @@ M09 — Transfers & Reconciliation `[DONE]`
 M10 — Recurring Transactions `[DONE]`
 M11 — Analytics & Dashboard Core `[DONE]`
 M12 — Budgets `[DONE]`
+M13 — Basic Financial Goals `[DONE]`
 
 M07 — Accounts & Categories
 
@@ -3497,13 +3498,38 @@ achieved
 ## Definition of Done
 
 ```text
-[ ] Goal semantics clearly documented
+[x] Goal semantics clearly documented
 
-[ ] No false account allocation claim
+[x] No false account allocation claim
 
-[ ] Goal metrics deterministic
+[x] Goal metrics deterministic
 
-[ ] Goal UI useful but lightweight
+[x] Goal UI useful but lightweight
+```
+Implementation status (2026-08-25):
+
+```text
+Migration 000006: goals (target/current amounts, target date, priority,
+linked account informational).
+
+goals module:
+  ACTIVE/PAUSED/ACHIEVED/CANCELLED;
+  user-maintained current_amount explicitly labeled "tracked goal progress",
+  never an auto-reserved balance (linked_account_id is informational only);
+  deterministic metrics: progress % (capped 100), remaining, months remaining,
+  required monthly contribution, simple feasibility ON_TRACK/AT_RISK vs
+  estimated monthly free cashflow (90-day average net, ledger-derived);
+  PATCH + status transitions with versioning (409); achieved/cancelled
+  immutable.
+
+Tests: 4 integration cases — progress/remaining/months/feasibility, 100% cap,
+pause/resume/achieve lifecycle, version conflict.
+
+Frontend: Goals page with progress cards (target/current, remaining,
+needed/month, est. free cashflow, feasibility badge) + create/edit modal +
+pause/resume/mark achieved.
+
+Verification: go build ./..., go test ./... (76), npm run typecheck/test/build.
 ```
 
 ---
