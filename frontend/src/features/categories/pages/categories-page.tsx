@@ -51,20 +51,20 @@ export function CategoriesPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Categories</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="fs-20 fw-bolder mb-0">Categories</h1>
+          <p className="fs-13 text-muted mb-0 mt-1">
             System categories plus your own, scoped to this workspace.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>Add Category</Button>
       </div>
 
-      {notice ? <div className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand">{notice}</div> : null}
-      {isLoading ? <p className="mt-6 text-sm text-gray-500">Loading categories…</p> : null}
+      {notice ? <div className="mt-4 bg-soft-primary text-primary p-3 fs-13 rounded">{notice}</div> : null}
+      {isLoading ? <p className="mt-4 fs-13 text-muted">Loading categories…</p> : null}
       {isError ? (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-4 alert alert-danger">
           <p>We could not load categories.</p>
           <Button variant="secondary" className="mt-2" onClick={() => void refetch()}>
             Try again
@@ -72,27 +72,27 @@ export function CategoriesPage() {
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-6 md:grid-cols-2">
+      <div className="row g-4 mt-4">
         {(['INCOME', 'EXPENSE'] as const).map((type) => {
           const list = type === 'INCOME' ? income : expense;
           return (
-            <section key={type}>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <section key={type} className="col-12 col-md-6">
+              <h2 className="fs-12 text-uppercase fw-semibold text-muted mb-3">
                 {type}
               </h2>
               {list.length === 0 ? (
                 <EmptyState title="No categories" />
               ) : (
-                <ul className="mt-3 space-y-2">
+                <ul className="d-flex flex-column gap-2 mt-3">
                   {list.map((c) => (
                     <li
                       key={c.id}
-                      className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3"
+                      className="card card-body d-flex align-items-center justify-content-between py-3"
                     >
                       <div>
-                        <span className="text-sm font-medium text-gray-900">{c.name}</span>
+                        <span className="fs-13 fw-medium text-dark">{c.name}</span>
                         {c.is_system ? (
-                          <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                          <span className="ms-2 badge bg-soft-secondary text-secondary">
                             system
                           </span>
                         ) : null}
@@ -119,22 +119,22 @@ export function CategoriesPage() {
       </div>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add category">
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        <form onSubmit={onSubmit} className="d-flex flex-column gap-3" noValidate>
           <TextField label="Name" placeholder="e.g. Pets" error={errors.name?.message} {...register('name')} />
           <div>
-            <label htmlFor="cat-type" className="mb-1.5 block text-sm font-medium text-gray-700">
+            <label htmlFor="cat-type" className="form-label">
               Type
             </label>
             <select
               id="cat-type"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm"
+              className="form-select"
               {...register('type')}
             >
               <option value="EXPENSE">Expense</option>
               <option value="INCOME">Income</option>
             </select>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="d-flex justify-content-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>

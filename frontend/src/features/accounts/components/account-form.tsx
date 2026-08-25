@@ -74,22 +74,20 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
   });
 
   return (
-    <form onSubmit={submitted} className="space-y-4" noValidate>
-      <TextField
-        label="Account name"
-        placeholder="e.g. Daily Wallet"
-        error={errors.name?.message as string | undefined}
-        {...register('name')}
-      />
-      <div>
-        <label htmlFor="type" className="mb-1.5 block text-sm font-medium text-gray-700">
+    <form onSubmit={submitted} noValidate>
+      <div className="mb-3">
+        <TextField
+          label="Account name"
+          placeholder="e.g. Daily Wallet"
+          error={errors.name?.message as string | undefined}
+          {...register('name')}
+        />
+      </div>
+      <div className="mb-3">
+        <label htmlFor="type" className="form-label">
           Account type
         </label>
-        <select
-          id="type"
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
-          {...register('type')}
-        >
+        <select id="type" className="form-select" {...register('type')}>
           {ACCOUNT_TYPES.map((t) => (
             <option key={t} value={t}>
               {t}
@@ -98,14 +96,14 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
         </select>
       </div>
       {!account ? (
-        <div>
-          <label htmlFor="amount" className="mb-1.5 block text-sm font-medium text-gray-700">
+        <div className="mb-3">
+          <label htmlFor="amount" className="form-label">
             Opening balance ({auth?.workspace.base_currency ?? 'IDR'})
           </label>
           <input
             id="amount"
             inputMode="decimal"
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+            className="form-control"
             value={amount}
             onChange={(e) => {
               setAmount(e.target.value);
@@ -113,18 +111,18 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
             }}
           />
           {errors.opening_balance ? (
-            <p role="alert" className="mt-1 text-xs text-red-600">
+            <p role="alert" className="text-danger fs-12 mt-1">
               {errors.opening_balance.message as string}
             </p>
           ) : null}
         </div>
       ) : null}
       {formError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-danger fs-13 mb-3">
           {formError}
         </p>
       ) : null}
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="d-flex justify-content-end gap-2 pt-2">
         <Button type="button" variant="secondary" onClick={onDone}>
           Cancel
         </Button>

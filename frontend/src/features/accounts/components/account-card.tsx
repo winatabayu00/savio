@@ -31,53 +31,55 @@ export function AccountCard({ account, onEdit, onReconcile, onArchiveRestore, on
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="font-semibold text-gray-900">{account.name}</h3>
-          <p className="text-xs text-gray-500">
-            {account.type}
-            {account.institution_name ? ` · ${account.institution_name}` : ''}
-          </p>
-        </div>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-            account.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-          }`}
-        >
-          {account.status}
-        </span>
-      </div>
-      <div className="mt-4">
-        <div className="text-2xl font-semibold text-gray-900">
-          {formatMoney(account.derived_balance, currency)}
-        </div>
-        <p className="text-xs text-gray-500">{currency} · derived balance</p>
-      </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={() => onEdit(account)} disabled={busy}>
-          Edit
-        </Button>
-        <Button variant="secondary" onClick={() => onReconcile(account)} disabled={busy}>
-          Reconcile
-        </Button>
-        {account.status === 'ACTIVE' ? (
-          <Button
-            variant="secondary"
-            disabled={busy}
-            onClick={() => void run(() => onArchiveRestore(account.id, true))}
+    <div className="card h-100 shadow-sm">
+      <div className="card-body">
+        <div className="d-flex align-items-start justify-content-between">
+          <div>
+            <h6 className="fw-semibold text-dark mb-0">{account.name}</h6>
+            <p className="fs-12 text-muted mb-0">
+              {account.type}
+              {account.institution_name ? ` · ${account.institution_name}` : ''}
+            </p>
+          </div>
+          <span
+            className={`badge ${
+              account.status === 'ACTIVE' ? 'bg-soft-success text-success' : 'bg-soft-secondary text-secondary'
+            } fw-medium`}
           >
-            Archive
+            {account.status}
+          </span>
+        </div>
+        <div className="mt-3">
+          <div className="fs-22 fw-semibold text-dark">
+            {formatMoney(account.derived_balance, currency)}
+          </div>
+          <p className="fs-12 text-muted mb-0">{currency} · derived balance</p>
+        </div>
+        <div className="mt-3 d-flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => onEdit(account)} disabled={busy}>
+            Edit
           </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            disabled={busy}
-            onClick={() => void run(() => onArchiveRestore(account.id, false))}
-          >
-            Restore
+          <Button variant="secondary" onClick={() => onReconcile(account)} disabled={busy}>
+            Reconcile
           </Button>
-        )}
+          {account.status === 'ACTIVE' ? (
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void run(() => onArchiveRestore(account.id, true))}
+            >
+              Archive
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void run(() => onArchiveRestore(account.id, false))}
+            >
+              Restore
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

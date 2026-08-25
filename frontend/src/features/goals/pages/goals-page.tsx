@@ -92,27 +92,27 @@ export function GoalsPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Goals</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="fs-20 fw-bolder mb-0">Goals</h1>
+          <p className="fs-13 text-muted mb-0 mt-1">
             Tracked progress toward your target. Progress is what you maintain manually — it never claims money is reserved in an account.
           </p>
         </div>
         <Button onClick={openCreate}>New Goal</Button>
       </div>
 
-      {notice ? <div className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand">{notice}</div> : null}
-      {isLoading ? <p className="mt-6 text-sm text-gray-500">Loading goals…</p> : null}
+      {notice ? <div className="mt-4 bg-soft-primary text-primary p-3 fs-13 rounded-3">{notice}</div> : null}
+      {isLoading ? <p className="mt-4 fs-13 text-muted">Loading goals…</p> : null}
       {isError ? (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-4 alert alert-danger p-3 fs-13 mb-0">
           We could not load your goals.
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="row g-4 mt-1">
         {goals && goals.length === 0 ? (
-          <div className="md:col-span-2">
+          <div className="col-12">
             <EmptyState
               title="No goals yet"
               description="Set a savings target, like an emergency fund or a trip, and track progress over time."
@@ -122,50 +122,52 @@ export function GoalsPage() {
         ) : null}
         {goals?.map((g) => {
           const pct = Math.min(g.progress_percent, 100);
-          const feasCls = g.feasibility === 'ON_TRACK' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+          const feasCls = g.feasibility === 'ON_TRACK' ? 'badge bg-soft-success text-success' : 'badge bg-soft-danger text-danger';
           return (
-            <div key={g.id} className="rounded-xl border border-gray-200 bg-white p-5">
-              <div className="flex items-start justify-between">
+            <div key={g.id} className="col-12 col-md-6">
+              <div className="card h-100">
+              <div className="card-body">
+              <div className="d-flex align-items-start justify-content-between">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{g.name}</h3>
-                  <p className="text-xs text-gray-500">
+                  <h3 className="fs-16 fw-semibold text-dark">{g.name}</h3>
+                  <p className="fs-12 text-muted mb-0">
                     Goal for {formatAmountString(g.target_amount, currency)} · {g.status.toLowerCase()}
                     {g.target_date ? ` · by ${g.target_date}` : ''}
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${feasCls}`}>{g.feasibility}</span>
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{g.priority}</span>
+                <div className="d-flex gap-2">
+                  <span className={feasCls}>{g.feasibility}</span>
+                  <span className="badge bg-soft-secondary text-secondary">{g.priority}</span>
                 </div>
               </div>
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">
+              <div className="mt-3">
+                <div className="d-flex align-items-center justify-content-between fs-13">
+                  <span className="text-secondary">
                     {formatAmountString(g.current_amount, currency)} of {formatAmountString(g.target_amount, currency)}
                   </span>
-                  <span className="font-medium text-gray-900">{g.progress_percent.toFixed(0)}%</span>
+                  <span className="fw-medium text-dark">{g.progress_percent.toFixed(0)}%</span>
                 </div>
-                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                  <div className={`h-full rounded-full ${pct >= 100 ? 'bg-green-500' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
+                <div className="progress mt-2" style={{ height: 8 }}>
+                  <div className={`progress-bar ${pct >= 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
                 </div>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-gray-600">
-                <div>
+              <div className="row g-2 mt-1 fs-12 text-secondary text-center">
+                <div className="col-4">
                   <div>Remaining</div>
-                  <div className="font-medium text-gray-900">{formatAmountString(g.remaining, currency)}</div>
+                  <div className="fw-medium text-dark">{formatAmountString(g.remaining, currency)}</div>
                 </div>
-                <div>
+                <div className="col-4">
                   <div>Needed / month</div>
-                  <div className="font-medium text-gray-900">
+                  <div className="fw-medium text-dark">
                     {g.months_remaining <= 0 ? '—' : formatAmountString(g.required_monthly, currency)}
                   </div>
                 </div>
-                <div>
+                <div className="col-4">
                   <div>Est. free cashflow</div>
-                  <div className="font-medium text-gray-900">{formatAmountString(g.estimated_monthly_income, currency)}</div>
+                  <div className="fw-medium text-dark">{formatAmountString(g.estimated_monthly_income, currency)}</div>
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-3 d-flex flex-wrap gap-2">
                 {g.status === 'ACTIVE' || g.status === 'PAUSED' ? (
                   <>
                     <Button variant="secondary" onClick={() => openEdit(g)}>Edit</Button>
@@ -184,31 +186,39 @@ export function GoalsPage() {
                   </>
                 ) : null}
               </div>
+              </div>
+              </div>
             </div>
           );
         })}
       </div>
 
       <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit goal' : 'New goal'}>
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        <form onSubmit={onSubmit} className="d-flex flex-column gap-3" noValidate>
           <TextField label="Goal name" placeholder="e.g. Emergency Fund" error={errors.name?.message} {...register('name')} />
-          <div className="grid grid-cols-2 gap-3">
-            <TextField label="Target amount" inputMode="decimal" error={errors.target_amount?.message} {...register('target_amount')} />
-            <TextField label="Current progress" inputMode="decimal" error={errors.current_amount?.message} {...register('current_amount')} />
+          <div className="row g-3">
+            <div className="col-6">
+              <TextField label="Target amount" inputMode="decimal" error={errors.target_amount?.message} {...register('target_amount')} />
+            </div>
+            <div className="col-6">
+              <TextField label="Current progress" inputMode="decimal" error={errors.current_amount?.message} {...register('current_amount')} />
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <TextField label="Target date" type="date" error={errors.target_date?.message} {...register('target_date')} />
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Priority</label>
-              <select className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm" {...register('priority')}>
+          <div className="row g-3">
+            <div className="col-6">
+              <TextField label="Target date" type="date" error={errors.target_date?.message} {...register('target_date')} />
+            </div>
+            <div className="col-6">
+              <label className="form-label">Priority</label>
+              <select className="form-select" {...register('priority')}>
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="HIGH">High</option>
               </select>
             </div>
           </div>
-          {formError ? <p role="alert" className="text-sm text-red-600">{formError}</p> : null}
-          <div className="flex justify-end gap-2 pt-2">
+          {formError ? <p role="alert" className="fs-13 text-danger mb-0">{formError}</p> : null}
+          <div className="d-flex justify-content-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setFormOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {editing ? 'Save changes' : 'Create goal'}

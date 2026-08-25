@@ -2,9 +2,9 @@ import { formatAmountString } from '@/shared/utils/money';
 import type { Transaction } from '@/features/transactions/types/transaction.types';
 
 const typeColor: Record<string, string> = {
-  INCOME: 'text-green-600',
-  EXPENSE: 'text-red-600',
-  ADJUSTMENT: 'text-gray-700',
+  INCOME: 'text-success',
+  EXPENSE: 'text-danger',
+  ADJUSTMENT: 'text-secondary',
 };
 
 function timeLabel(tx: Transaction): string | null {
@@ -24,53 +24,55 @@ interface Props {
 export function TransactionTable({ transactions, currency, onOpen }: Props) {
   if (transactions.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+    <div className="card">
+      <div className="table-responsive">
+        <table className="table table-hover mb-0">
+        <thead className="fs-12 text-uppercase text-muted">
           <tr>
-            <th className="px-4 py-3 font-medium">Date</th>
-            <th className="px-4 py-3 font-medium">Description</th>
-            <th className="hidden px-4 py-3 font-medium md:table-cell">Category</th>
-            <th className="hidden px-4 py-3 font-medium md:table-cell">Account</th>
-            <th className="hidden px-4 py-3 font-medium lg:table-cell">Status</th>
-            <th className="px-4 py-3 text-right font-medium">Amount</th>
+            <th className="fw-medium">Date</th>
+            <th className="fw-medium">Description</th>
+            <th className="d-none d-md-table-cell fw-medium">Category</th>
+            <th className="d-none d-md-table-cell fw-medium">Account</th>
+            <th className="d-none d-lg-table-cell fw-medium">Status</th>
+            <th className="text-end fw-medium">Amount</th>
           </tr>
         </thead>
         <tbody>
           {transactions.map((tx) => (
             <tr
               key={tx.id}
-              className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50"
+              className="border-bottom"
+              style={{ cursor: 'pointer' }}
               onClick={() => onOpen(tx)}
             >
-              <td className="whitespace-nowrap px-4 py-3 text-gray-500">
+              <td className="text-nowrap text-secondary">
                 <div>{tx.transaction_date}</div>
-                <div className="text-xs text-gray-400">{timeLabel(tx) ?? '—'}</div>
+                <div className="fs-12 text-muted">{timeLabel(tx) ?? '—'}</div>
               </td>
-              <td className="px-4 py-3">
-                <div className="font-medium text-gray-900">
+              <td>
+                <div className="fw-medium text-dark">
                   {tx.description || tx.merchant || 'Untitled'}
                 </div>
                 {tx.merchant ? (
-                  <div className="text-xs text-gray-400">{tx.merchant}</div>
+                  <div className="fs-12 text-muted">{tx.merchant}</div>
                 ) : null}
               </td>
-              <td className="hidden px-4 py-3 text-gray-600 md:table-cell">
+              <td className="d-none d-md-table-cell text-secondary">
                 {tx.category_name || '—'}
               </td>
-              <td className="hidden px-4 py-3 text-gray-600 md:table-cell">{tx.account_name}</td>
-              <td className="hidden px-4 py-3 lg:table-cell">
+              <td className="d-none d-md-table-cell text-secondary">{tx.account_name}</td>
+              <td className="d-none d-lg-table-cell">
                 {tx.status === 'POSTED' ? (
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">POSTED</span>
+                  <span className="badge bg-soft-success text-success fw-medium">POSTED</span>
                 ) : tx.status === 'VOIDED' ? (
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">VOIDED</span>
+                  <span className="badge bg-soft-secondary text-secondary fw-medium">VOIDED</span>
                 ) : (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">DRAFT</span>
+                  <span className="badge bg-soft-warning text-warning fw-medium">DRAFT</span>
                 )}
               </td>
               <td
-                className={`whitespace-nowrap px-4 py-3 text-right font-semibold ${
-                  typeColor[tx.type] ?? 'text-gray-700'
+                className={`text-nowrap text-end fw-semibold ${
+                  typeColor[tx.type] ?? 'text-secondary'
                 }`}
               >
                 {tx.type === 'EXPENSE' ? '−' : '+'}
@@ -80,6 +82,7 @@ export function TransactionTable({ transactions, currency, onOpen }: Props) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

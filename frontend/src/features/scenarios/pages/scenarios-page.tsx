@@ -78,57 +78,58 @@ export function ScenariosPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Scenario Simulator</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="fs-20 fw-bolder mb-0">Scenario Simulator</h1>
+          <p className="fs-13 text-muted mb-0 mt-1">
             Ask “what if?” without touching your real money. Scenarios are non-destructive overlays on your forecast.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>New Scenario</Button>
       </div>
 
-      {notice ? <div className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand">{notice}</div> : null}
-      {isLoading ? <p className="mt-6 text-sm text-gray-500">Loading scenarios…</p> : null}
+      {notice ? <div className="mt-4 bg-soft-primary text-primary p-3 fs-13 rounded-3">{notice}</div> : null}
+      {isLoading ? <p className="mt-4 fs-13 text-muted">Loading scenarios…</p> : null}
       {isError ? (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-4 alert alert-danger p-3 fs-13 mb-0">
           We could not load your scenarios.
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[300px_1fr]">
-        <aside className="space-y-2">
+      <div className="row g-4 mt-1">
+        <aside className="col-lg-3 d-flex flex-column gap-2">
           {scenarios && scenarios.length === 0 ? (
             <EmptyState title="No scenarios yet" description="Create one to simulate a purchase, raise, or cost reduction." />
           ) : null}
           {scenarios?.map((s) => (
             <div
               key={s.id}
-              className={`rounded-xl border bg-white p-4 ${selectedId === s.id ? 'border-brand ring-1 ring-brand' : 'border-gray-200'}`}
+              className={`card p-3 ${selectedId === s.id ? 'border-primary' : ''}`}
             >
-              <button type="button" className="w-full text-left" onClick={() => setSelectedId(s.id)}>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-900">{s.name}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${s.status === 'CALCULATED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              <button type="button" className="w-100 text-start" onClick={() => setSelectedId(s.id)}>
+                <div className="d-flex align-items-center justify-content-between">
+                  <span className="fw-semibold text-dark">{s.name}</span>
+                  <span className={`badge ${s.status === 'CALCULATED' ? 'bg-soft-success text-success' : 'bg-soft-secondary text-secondary'}`}>
                     {s.status}
                   </span>
                 </div>
-                <div className="mt-1 text-xs text-gray-500">{s.modifications.length} modification{s.modifications.length === 1 ? '' : 's'}</div>
-                {s.is_stale ? <div className="mt-1 text-xs font-medium text-amber-600">stale — recalculate</div> : null}
+                <div className="mt-1 fs-12 text-muted">{s.modifications.length} modification{s.modifications.length === 1 ? '' : 's'}</div>
+                {s.is_stale ? <div className="mt-1 fs-12 fw-medium text-warning">stale — recalculate</div> : null}
               </button>
             </div>
           ))}
         </aside>
 
-        <main>
+        <main className="col-lg-9">
           {selected ? (
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="card">
+              <div className="card-body">
+              <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold">{selected.name}</h2>
-                  {selected.description ? <p className="mt-1 text-sm text-gray-500">{selected.description}</p> : null}
+                  <h2 className="fs-18 fw-semibold text-dark">{selected.name}</h2>
+                  {selected.description ? <p className="mt-1 fs-13 text-muted mb-0">{selected.description}</p> : null}
                 </div>
-                <div className="flex gap-2">
+                <div className="d-flex gap-2">
                   <Button variant="secondary" onClick={() => setModOpen(true)}>Add modification</Button>
                   <Button onClick={onCalculate} disabled={calcBusy}>
                     {calcBusy ? 'Calculating…' : 'Calculate'}
@@ -140,28 +141,28 @@ export function ScenariosPage() {
               </div>
 
               {selected.is_stale ? (
-                <div className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                <div className="mt-4 alert alert-warning p-3 fs-13 mb-0">
                   Your finance data changed since this result. Recalculate for a current comparison.
                 </div>
               ) : null}
 
-              <h3 className="mt-6 text-sm font-semibold uppercase tracking-wide text-gray-500">Modifications</h3>
+              <h3 className="mt-4 fs-12 text-uppercase fw-semibold text-muted mb-0">Modifications</h3>
               {selected.modifications.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-500">No modifications yet. Add one to change the projection.</p>
+                <p className="mt-2 fs-13 text-muted">No modifications yet. Add one to change the projection.</p>
               ) : (
-                <ul className="mt-2 space-y-2">
+                <ul className="mt-2 list-unstyled d-flex flex-column gap-2 mb-0">
                   {selected.modifications.map((m) => (
-                    <li key={m.id} className="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-2.5 text-sm">
+                    <li key={m.id} className="d-flex align-items-center justify-content-between border rounded p-2 fs-13">
                       <div>
-                        <span className="font-medium text-gray-900">{MOD_LABELS[m.type]}</span>
-                        {m.narrative ? <span className="ml-2 text-gray-500">· {m.narrative}</span> : null}
-                        {m.frequency ? <span className="ml-2 text-xs text-gray-400">{m.frequency}</span> : null}
+                        <span className="fw-medium text-dark">{MOD_LABELS[m.type]}</span>
+                        {m.narrative ? <span className="ms-2 text-secondary">· {m.narrative}</span> : null}
+                        {m.frequency ? <span className="ms-2 fs-12 text-muted">{m.frequency}</span> : null}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`font-semibold ${m.type.includes('EXPENSE') || m.type.includes('REDUCTION') ? 'text-red-600' : 'text-green-600'}`}>
+                      <div className="d-flex align-items-center gap-3">
+                        <span className={`fw-semibold ${m.type.includes('EXPENSE') || m.type.includes('REDUCTION') ? 'text-danger' : 'text-success'}`}>
                           {formatAmountString(m.amount, currency)}
                         </span>
-                        <button className="text-gray-400 hover:text-red-600" onClick={() => removeMod.mutateAsync({ scenarioId: selected.id, modId: m.id })} aria-label="Remove">
+                        <button className="text-muted" onClick={() => removeMod.mutateAsync({ scenarioId: selected.id, modId: m.id })} aria-label="Remove">
                           ×
                         </button>
                       </div>
@@ -173,15 +174,20 @@ export function ScenariosPage() {
               {selected.result ? (
                 <ResultComparison scenario={selected} currency={currency} />
               ) : (
-                <div className="mt-6 rounded-xl border border-dashed border-gray-300 p-8 text-center">
-                  <p className="text-sm text-gray-500">Add modifications, then Calculate to see baseline vs scenario.</p>
+                <div className="mt-4 card border-dashed text-center">
+                  <div className="card-body py-5">
+                    <p className="fs-13 text-muted mb-0">Add modifications, then Calculate to see baseline vs scenario.</p>
+                  </div>
                 </div>
               )}
+              </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
-              <p className="text-sm text-gray-500">Select a scenario, or create a new one.</p>
+            <div className="card border-dashed text-center">
+              <div className="card-body py-5">
+              <p className="fs-13 text-muted mb-0">Select a scenario, or create a new one.</p>
               <Button className="mt-4" onClick={() => setCreateOpen(true)}>Create your first scenario</Button>
+              </div>
             </div>
           )}
         </main>
@@ -199,10 +205,10 @@ export function ScenariosPage() {
       </Modal>
 
       <Modal open={modOpen} onClose={() => setModOpen(false)} title="Add modification">
-        <form onSubmit={onAddMod} className="space-y-4" noValidate>
+        <form onSubmit={onAddMod} className="d-flex flex-column gap-3" noValidate>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">What if…</label>
-            <select className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm" {...register('type')}>
+            <label className="form-label">What if…</label>
+            <select className="form-select" {...register('type')}>
               {Object.entries(MOD_LABELS).map(([v, label]) => (
                 <option key={v} value={v}>{label}</option>
               ))}
@@ -210,8 +216,8 @@ export function ScenariosPage() {
           </div>
           <TextField label="Amount" inputMode="decimal" error={errors.amount?.message} {...register('amount')} />
           <TextField label="Note (optional)" placeholder="e.g. new car" error={errors.narrative?.message} {...register('narrative')} />
-          {formError ? <p role="alert" className="text-sm text-red-600">{formError}</p> : null}
-          <div className="flex justify-end gap-2 pt-2">
+          {formError ? <p role="alert" className="fs-13 text-danger mb-0">{formError}</p> : null}
+          <div className="d-flex justify-content-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setModOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>Add</Button>
           </div>
@@ -224,9 +230,9 @@ export function ScenariosPage() {
 function NewScenarioForm({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (name: string) => void }) {
   const [name, setName] = useState('');
   return (
-    <div className="space-y-4">
+    <div className="d-flex flex-column gap-3">
       <TextField label="Scenario name" placeholder="e.g. Buy a new car" value={name} onChange={(e) => setName(e.target.value)} />
-      <div className="flex justify-end gap-2">
+      <div className="d-flex justify-content-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button onClick={() => onSubmit(name)} disabled={name.trim() === ''}>Create</Button>
       </div>
@@ -243,30 +249,34 @@ function ResultComparison({ scenario, currency }: { scenario: Scenario; currency
     { label: 'Expenses', base: r.baseline_expense, scen: r.scenario_expense },
   ];
   return (
-    <div className="mt-6">
-      <div className="flex items-center gap-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Baseline vs scenario</h3>
-        <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
+    <div className="mt-4">
+      <div className="d-flex align-items-center gap-2">
+        <h3 className="fs-12 text-uppercase fw-semibold text-muted mb-0">Baseline vs scenario</h3>
+        <span className="badge bg-soft-primary text-primary">
           net effect {formatAmountString(r.cashflow_difference, currency)}
         </span>
       </div>
-      <div className="mt-3 grid gap-3 md:grid-cols-4">
+      <div className="row g-3 mt-1">
         {diffs.map((d) => (
-          <div key={d.label} className="rounded-lg border border-gray-100 p-3">
-            <div className="text-xs text-gray-500">{d.label}</div>
-            <div className="mt-1 text-xs text-gray-400">baseline: {formatAmountString(d.base, currency)}</div>
-            <div className="text-sm font-semibold text-gray-900">{formatAmountString(d.scen, currency)}</div>
+          <div key={d.label} className="col-12 col-md-3">
+            <div className="card h-100">
+              <div className="card-body p-3">
+                <div className="fs-12 text-muted">{d.label}</div>
+                <div className="mt-1 fs-12 text-muted">baseline: {formatAmountString(d.base, currency)}</div>
+                <div className="fs-13 fw-semibold text-dark">{formatAmountString(d.scen, currency)}</div>
+              </div>
+            </div>
           </div>
         ))}
       </div>
 
       {r.timeline.length > 2 ? (
-        <div className="mt-6">
-          <h4 className="text-sm font-semibold text-gray-700">Projection overlay</h4>
+        <div className="mt-4">
+          <h4 className="fs-13 fw-semibold text-secondary">Projection overlay</h4>
           <OverlayChart timeline={r.timeline} />
         </div>
       ) : null}
-      <p className="mt-4 text-xs text-gray-400">{r.assumption_note}</p>
+      <p className="mt-3 fs-12 text-muted mb-0">{r.assumption_note}</p>
     </div>
   );
 }
@@ -286,7 +296,7 @@ function OverlayChart({ timeline }: { timeline: { date: string; baseline_balance
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Baseline vs scenario projection">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-100 mt-3" role="img" aria-label="Baseline vs scenario projection">
       <polyline points={line('baseline_balance')} fill="none" stroke="#9ca3af" strokeWidth="2" strokeDasharray="6 4" />
       <polyline points={line('scenario_balance')} fill="none" stroke="#0e5b4e" strokeWidth="2.5" />
     </svg>

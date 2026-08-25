@@ -46,16 +46,15 @@ export function TransactionsPage() {
 
   const patch = (part: Partial<TransactionFilters>) => setFilters((f) => ({ ...f, ...part, page: 1 }));
 
-  const selectCls =
-    'rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30';
+  const selectCls = 'form-select';
   const [voidReason, setVoidReason] = useState('');
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Transactions</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="fs-20 fw-bolder mb-0">Transactions</h1>
+          <p className="fs-13 text-muted mb-0">
             Your income, expenses and adjustments.
           </p>
         </div>
@@ -64,10 +63,11 @@ export function TransactionsPage() {
         </Button>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-4 d-flex flex-wrap align-items-center gap-2">
         <input
           placeholder="Search descriptions, merchants…"
-          className="w-64 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+          className="form-control"
+          style={{ width: '16rem' }}
           value={filters.search}
           onChange={(e) => patch({ search: e.target.value })}
         />
@@ -95,22 +95,22 @@ export function TransactionsPage() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        <div className="flex items-center gap-1 text-sm text-gray-600">
-          <input type="date" className={selectCls} value={filters.from} onChange={(e) => patch({ from: e.target.value })} />
+        <div className="d-flex align-items-center gap-1 fs-13 text-secondary">
+          <input type="date" className="form-control" value={filters.from} onChange={(e) => patch({ from: e.target.value })} />
           to
-          <input type="date" className={selectCls} value={filters.to} onChange={(e) => patch({ to: e.target.value })} />
+          <input type="date" className="form-control" value={filters.to} onChange={(e) => patch({ to: e.target.value })} />
         </div>
       </div>
 
-      {notice ? <div className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand">{notice}</div> : null}
-      {isLoading ? <p className="mt-6 text-sm text-gray-500">Loading transactions…</p> : null}
+      {notice ? <div className="mt-4 bg-soft-primary text-primary fs-13 p-3 rounded">{notice}</div> : null}
+      {isLoading ? <p className="mt-4 fs-13 text-muted">Loading transactions…</p> : null}
       {isError ? (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-4 alert alert-danger">
           We could not load your transactions. Please try again.
         </div>
       ) : null}
 
-      <div className="mt-6">
+      <div className="mt-4">
         {data && data.data.length === 0 ? (
           <EmptyState
             title="No transactions found"
@@ -129,11 +129,11 @@ export function TransactionsPage() {
           <TransactionTable transactions={data?.data ?? []} currency={currency} onOpen={setDetail} />
         )}
         {data && data.meta.total_pages > 1 ? (
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+          <div className="mt-4 d-flex align-items-center justify-content-between fs-13 text-secondary">
             <span>
               Page {data.meta.page} of {data.meta.total_pages} · {data.meta.total} transactions
             </span>
-            <div className="flex gap-2">
+            <div className="d-flex gap-2">
               <Button variant="secondary" disabled={data.meta.page <= 1} onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}>
                 Previous
               </Button>
@@ -154,12 +154,12 @@ export function TransactionsPage() {
 
       <Modal open={Boolean(detail)} onClose={() => setDetail(undefined)} title="Transaction details">
         {detail ? (
-          <div className="space-y-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-gray-900">
+          <div className="d-flex flex-column gap-3 fs-13">
+            <div className="d-flex align-items-center justify-content-between">
+              <span className="fw-semibold text-dark">
                 {detail.description || detail.merchant || 'Untitled'}
               </span>
-              <span className={`font-bold ${detail.type === 'EXPENSE' ? 'text-red-600' : detail.type === 'INCOME' ? 'text-green-600' : 'text-gray-700'}`}>
+              <span className={`fw-bolder ${detail.type === 'EXPENSE' ? 'text-danger' : detail.type === 'INCOME' ? 'text-success' : 'text-secondary'}`}>
                 {detail.type === 'EXPENSE' ? '−' : '+'}
                 {formatAmountString(detail.amount, currency)}
               </span>
@@ -172,7 +172,7 @@ export function TransactionsPage() {
             <Row label="Merchant" value={detail.merchant || '—'} />
             {detail.notes ? <Row label="Notes" value={detail.notes} /> : null}
             {detail.void_reason ? <Row label="Void reason" value={detail.void_reason} /> : null}
-            <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <div className="d-flex flex-wrap justify-content-end gap-2 pt-2">
               {detail.status === 'DRAFT' ? (
                 <Button variant="secondary" onClick={() => {
                   post.mutateAsync({ id: detail.id, version: detail.version }).then(() => setDetail(undefined))
@@ -195,12 +195,12 @@ export function TransactionsPage() {
       </Modal>
 
       <Modal open={Boolean(voidTx)} onClose={() => setVoidTx(undefined)} title="Void this transaction?">
-        <div className="space-y-4 text-sm text-gray-700">
+        <div className="d-flex flex-column gap-3 fs-13 text-secondary">
           <p>
             The transaction remains in history but stops counting toward balances and analytics. To fix an error, void it and create a replacement.
           </p>
           <TextField label="Reason (optional)" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} />
-          <div className="flex justify-end gap-2">
+          <div className="d-flex justify-content-end gap-2">
             <Button variant="secondary" onClick={() => setVoidTx(undefined)}>Cancel</Button>
             <Button variant="danger" disabled={!voidTx} onClick={async () => {
               if (!voidTx) return;
@@ -224,9 +224,9 @@ export function TransactionsPage() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4 border-b border-gray-100 pb-2">
-      <span className="text-gray-500">{label}</span>
-      <span className="text-right text-gray-900">{value}</span>
+    <div className="d-flex justify-content-between gap-4 border-bottom pb-2">
+      <span className="text-muted">{label}</span>
+      <span className="text-end text-dark">{value}</span>
     </div>
   );
 }

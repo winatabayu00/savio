@@ -87,29 +87,29 @@ export function BudgetsPage() {
   });
 
   const statusStyles: Record<string, string> = {
-    ON_TRACK: 'bg-green-100 text-green-700',
-    WARNING: 'bg-amber-100 text-amber-700',
-    EXCEEDED: 'bg-red-100 text-red-700',
+    ON_TRACK: 'bg-soft-success text-success',
+    WARNING: 'bg-soft-warning text-warning',
+    EXCEEDED: 'bg-soft-danger text-danger',
   };
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Budgets</h1>
-          <p className="mt-1 text-sm text-gray-500">Plan monthly spending per category and track progress.</p>
+          <h1 className="fs-20 fw-bolder mb-0">Budgets</h1>
+          <p className="fs-13 text-muted mb-0 mt-1">Plan monthly spending per category and track progress.</p>
         </div>
         <Button onClick={openCreate}>New Budget</Button>
       </div>
 
-      <div className="mt-4 flex gap-1 border-b border-gray-200">
+      <div className="mt-4 d-flex gap-1 border-bottom">
         {(['ACTIVE', 'CLOSED'] as const).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`rounded-t-lg px-4 py-2 text-sm font-medium ${
-              tab === t ? 'border-b-2 border-brand text-brand' : 'text-gray-500 hover:text-gray-700'
+            className={`rounded-top px-4 py-2 fs-13 fw-medium ${
+              tab === t ? 'border-bottom border-primary text-primary' : 'text-muted'
             }`}
           >
             {t === 'ACTIVE' ? 'Active' : 'Closed'}
@@ -117,17 +117,17 @@ export function BudgetsPage() {
         ))}
       </div>
 
-      {notice ? <div className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand">{notice}</div> : null}
-      {isLoading ? <p className="mt-6 text-sm text-gray-500">Loading budgets…</p> : null}
+      {notice ? <div className="mt-4 bg-soft-primary text-primary p-3 fs-13 rounded">{notice}</div> : null}
+      {isLoading ? <p className="mt-4 fs-13 text-muted">Loading budgets…</p> : null}
       {isError ? (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-4 alert alert-danger">
           We could not load budgets.
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="row g-4 mt-4">
         {budgets && budgets.length === 0 ? (
-          <div className="md:col-span-2">
+          <div className="col-12">
             <EmptyState
               title={tab === 'ACTIVE' ? 'No budgets yet' : 'No closed budgets'}
               description={
@@ -141,40 +141,42 @@ export function BudgetsPage() {
         ) : null}
         {budgets?.map((b) => {
           const pct = Math.min(b.utilization_percent, 100);
-          const barColor = b.computed_status === 'EXCEEDED' ? 'bg-red-500' : b.computed_status === 'WARNING' ? 'bg-amber-500' : 'bg-green-500';
+          const barColor = b.computed_status === 'EXCEEDED' ? 'bg-danger' : b.computed_status === 'WARNING' ? 'bg-warning' : 'bg-success';
           return (
-            <div key={b.id} className="rounded-xl border border-gray-200 bg-white p-5">
-              <div className="flex items-start justify-between">
+            <div key={b.id} className="col-12 col-md-6">
+              <div className="card h-100">
+                <div className="card-body">
+              <div className="d-flex align-items-start justify-content-between">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{b.category_name}</h3>
-                  <p className="text-xs text-gray-500">
+                  <h3 className="fs-15 fw-semibold text-dark mb-3">{b.category_name}</h3>
+                  <p className="fs-12 text-muted">
                     {b.period_start} → {b.period_end}
                   </p>
                 </div>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[b.computed_status]}`}>
+                <span className={`badge ${statusStyles[b.computed_status]}`}>
                   {b.computed_status}
                 </span>
               </div>
               <div className="mt-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">
+                <div className="d-flex align-items-center justify-content-between fs-13">
+                  <span className="text-secondary">
                     Spent {formatAmountString(b.spent, currency)} of {formatAmountString(b.amount, currency)}
                   </span>
-                  <span className="font-medium text-gray-900">{b.utilization_percent.toFixed(1)}%</span>
+                  <span className="fw-medium text-dark">{b.utilization_percent.toFixed(1)}%</span>
                 </div>
-                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                  <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                <div className="progress mt-2" style={{ height: 8 }}>
+                  <div className={`progress-bar ${barColor}`} style={{ width: `${pct}%` }} />
                 </div>
-                <div className="mt-2 text-xs text-gray-500">
+                <div className="mt-2 fs-12 text-muted">
                   Remaining: {formatAmountString(b.remaining, currency)}
                   {b.projected_overspend ? (
-                    <span className="ml-2 text-red-600">
+                    <span className="ms-2 text-danger">
                       Projected overspend: {formatAmountString(b.projected_overspend, currency)}
                     </span>
                   ) : null}
                 </div>
               </div>
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 d-flex gap-2">
                 {b.status === 'ACTIVE' ? (
                   <>
                     <Button variant="secondary" onClick={() => openEdit(b)}>Edit</Button>
@@ -187,18 +189,20 @@ export function BudgetsPage() {
                   </>
                 ) : null}
               </div>
+                </div>
+              </div>
             </div>
           );
         })}
       </div>
 
       <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit budget' : 'New budget'}>
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        <form onSubmit={onSubmit} className="d-flex flex-column gap-3" noValidate>
           <div>
-            <label htmlFor="b-cat" className="mb-1.5 block text-sm font-medium text-gray-700">Expense category</label>
+            <label htmlFor="b-cat" className="form-label">Expense category</label>
             <select
               id="b-cat"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+              className="form-select"
               {...register('category_id')}
             >
               <option value="">Select category…</option>
@@ -206,15 +210,19 @@ export function BudgetsPage() {
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
-            {errors.category_id ? <p className="mt-1 text-xs text-red-600">{errors.category_id.message}</p> : null}
+            {errors.category_id ? <p className="mt-1 fs-12 text-danger">{errors.category_id.message}</p> : null}
           </div>
           <TextField label="Amount" inputMode="decimal" error={errors.amount?.message} {...register('amount')} />
-          <div className="grid grid-cols-2 gap-3">
-            <TextField label="Period start" type="date" error={errors.period_start?.message} {...register('period_start')} />
-            <TextField label="Period end" type="date" error={errors.period_end?.message} {...register('period_end')} />
+          <div className="row g-3">
+            <div className="col-6">
+              <TextField label="Period start" type="date" error={errors.period_start?.message} {...register('period_start')} />
+            </div>
+            <div className="col-6">
+              <TextField label="Period end" type="date" error={errors.period_end?.message} {...register('period_end')} />
+            </div>
           </div>
-          {formError ? <p role="alert" className="text-sm text-red-600">{formError}</p> : null}
-          <div className="flex justify-end gap-2 pt-2">
+          {formError ? <p role="alert" className="fs-13 text-danger">{formError}</p> : null}
+          <div className="d-flex justify-content-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setFormOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {editing ? 'Save changes' : 'Create budget'}

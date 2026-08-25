@@ -71,31 +71,30 @@ export function TransfersPage() {
   });
 
   const activeAccounts = accounts.data?.data ?? [];
-  const inputCls =
-    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30';
-  const labelCls = 'mb-1.5 block text-sm font-medium text-gray-700';
+  const inputCls = 'form-select';
+  const labelCls = 'form-label';
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Transfers</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="fs-20 fw-bolder mb-0">Transfers</h1>
+          <p className="fs-13 text-muted mb-0">
             Move money between your accounts. Transfers never count as income or expense.
           </p>
         </div>
         <Button onClick={() => setFormOpen(true)}>New Transfer</Button>
       </div>
 
-      {notice ? <div className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand">{notice}</div> : null}
-      {isLoading ? <p className="mt-6 text-sm text-gray-500">Loading transfers…</p> : null}
+      {notice ? <div className="mt-4 bg-soft-primary text-primary fs-13 p-3 rounded">{notice}</div> : null}
+      {isLoading ? <p className="mt-4 fs-13 text-muted">Loading transfers…</p> : null}
       {isError ? (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-4 alert alert-danger">
           We could not load transfers.
         </div>
       ) : null}
 
-      <div className="mt-6">
+      <div className="mt-4">
         {data && data.data.length === 0 ? (
           <EmptyState
             title="No transfers yet"
@@ -103,60 +102,63 @@ export function TransfersPage() {
             action={<Button onClick={() => setFormOpen(true)}>Create your first transfer</Button>}
           />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+          <div className="card">
+            <div className="table-responsive">
+            <table className="table table-hover mb-0">
+              <thead className="fs-12 text-uppercase text-muted">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Date</th>
-                  <th className="px-4 py-3 font-medium">From → To</th>
-                  <th className="hidden px-4 py-3 font-medium md:table-cell">Status</th>
-                  <th className="px-4 py-3 text-right font-medium">Amount</th>
+                  <th className="fw-medium">Date</th>
+                  <th className="fw-medium">From → To</th>
+                  <th className="d-none d-md-table-cell fw-medium">Status</th>
+                  <th className="text-end fw-medium">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {data?.data.map((t) => (
                   <tr
                     key={t.id}
-                    className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50"
+                    className="border-bottom"
+                    style={{ cursor: 'pointer' }}
                     onClick={() => setDetail(t)}
                   >
-                    <td className="whitespace-nowrap px-4 py-3 text-gray-500">{t.transfer_date}</td>
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-gray-900">{t.from_account_name}</span>
-                      <span className="text-gray-400"> → </span>
-                      <span className="font-medium text-gray-900">{t.to_account_name}</span>
+                    <td className="text-nowrap text-secondary">{t.transfer_date}</td>
+                    <td>
+                      <span className="fw-medium text-dark">{t.from_account_name}</span>
+                      <span className="text-muted"> → </span>
+                      <span className="fw-medium text-dark">{t.to_account_name}</span>
                       {t.description ? (
-                        <div className="text-xs text-gray-400">{t.description}</div>
+                        <div className="fs-12 text-muted">{t.description}</div>
                       ) : null}
                     </td>
-                    <td className="hidden px-4 py-3 md:table-cell">
+                    <td className="d-none d-md-table-cell">
                       {t.status === 'POSTED' ? (
-                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">POSTED</span>
+                        <span className="badge bg-soft-success text-success fw-medium">POSTED</span>
                       ) : (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">VOIDED</span>
+                        <span className="badge bg-soft-secondary text-secondary fw-medium">VOIDED</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-gray-900">
+                    <td className="text-nowrap text-end fw-semibold text-dark">
                       {formatAmountString(t.amount, currency)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
         {data && data.meta.total_pages > 1 ? (
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 d-flex gap-2">
             <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-            <span className="self-center text-sm text-gray-600">Page {page} of {data.meta.total_pages}</span>
+            <span className="align-self-center fs-13 text-secondary">Page {page} of {data.meta.total_pages}</span>
             <Button variant="secondary" disabled={page >= data.meta.total_pages} onClick={() => setPage((p) => p + 1)}>Next</Button>
           </div>
         ) : null}
       </div>
 
       <Modal open={formOpen} onClose={() => setFormOpen(false)} title="New transfer">
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          <div>
+        <form onSubmit={onSubmit} noValidate>
+          <div className="mb-3">
             <label className={labelCls}>From account</label>
             <select className={inputCls} {...register('from_account_id')}>
               <option value="">Select source…</option>
@@ -164,9 +166,9 @@ export function TransfersPage() {
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
-            {errors.from_account_id ? <p className="mt-1 text-xs text-red-600">{errors.from_account_id.message}</p> : null}
+            {errors.from_account_id ? <p className="text-danger fs-12 mt-1">{errors.from_account_id.message}</p> : null}
           </div>
-          <div>
+          <div className="mb-3">
             <label className={labelCls}>To account</label>
             <select className={inputCls} {...register('to_account_id')}>
               <option value="">Select destination…</option>
@@ -174,15 +176,21 @@ export function TransfersPage() {
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
-            {errors.to_account_id ? <p className="mt-1 text-xs text-red-600">{errors.to_account_id.message}</p> : null}
+            {errors.to_account_id ? <p className="text-danger fs-12 mt-1">{errors.to_account_id.message}</p> : null}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <TextField label="Amount" inputMode="decimal" error={errors.amount?.message} {...register('amount')} />
-            <TextField label="Date" type="date" error={errors.transfer_date?.message} {...register('transfer_date')} />
+          <div className="row g-3 mb-3">
+            <div className="col-6">
+              <TextField label="Amount" inputMode="decimal" error={errors.amount?.message} {...register('amount')} />
+            </div>
+            <div className="col-6">
+              <TextField label="Date" type="date" error={errors.transfer_date?.message} {...register('transfer_date')} />
+            </div>
           </div>
-          <TextField label="Description (optional)" {...register('description')} />
-          {formError ? <p role="alert" className="text-sm text-red-600">{formError}</p> : null}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="mb-3">
+            <TextField label="Description (optional)" {...register('description')} />
+          </div>
+          {formError ? <p role="alert" className="text-danger fs-13">{formError}</p> : null}
+          <div className="d-flex justify-content-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setFormOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Creating…' : 'Create transfer'}
@@ -193,18 +201,18 @@ export function TransfersPage() {
 
       <Modal open={Boolean(detail)} onClose={() => setDetail(undefined)} title="Transfer details">
         {detail ? (
-          <div className="space-y-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-gray-900">
+          <div className="d-flex flex-column gap-3 fs-13">
+            <div className="d-flex align-items-center justify-content-between">
+              <span className="fw-semibold text-dark">
                 {detail.from_account_name} → {detail.to_account_name}
               </span>
-              <span className="font-bold text-gray-900">{formatAmountString(detail.amount, currency)}</span>
+              <span className="fw-bolder text-dark">{formatAmountString(detail.amount, currency)}</span>
             </div>
             <Row label="Date" value={detail.transfer_date} />
             <Row label="Status" value={detail.status} />
             {detail.description ? <Row label="Description" value={detail.description} /> : null}
             {detail.void_reason ? <Row label="Void reason" value={detail.void_reason} /> : null}
-            <div className="flex justify-end pt-2">
+            <div className="d-flex justify-content-end pt-2">
               {detail.status === 'POSTED' ? (
                 <Button variant="danger" onClick={() => { setVoidTx(detail); setDetail(undefined); }}>
                   Void transfer
@@ -216,12 +224,12 @@ export function TransfersPage() {
       </Modal>
 
       <Modal open={Boolean(voidTx)} onClose={() => setVoidTx(undefined)} title="Void this transfer?">
-        <div className="space-y-4 text-sm text-gray-700">
+        <div className="d-flex flex-column gap-3 fs-13 text-secondary">
           <p>
             The transfer stays in history but stops moving balances. To redo the move, void it and create a new transfer.
           </p>
           <TextField label="Reason (optional)" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} />
-          <div className="flex justify-end gap-2">
+          <div className="d-flex justify-content-end gap-2">
             <Button variant="secondary" onClick={() => setVoidTx(undefined)}>Cancel</Button>
             <Button
               variant="danger"
@@ -248,9 +256,9 @@ export function TransfersPage() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4 border-b border-gray-100 pb-2">
-      <span className="text-gray-500">{label}</span>
-      <span className="text-right text-gray-900">{value}</span>
+    <div className="d-flex justify-content-between gap-4 border-bottom pb-2">
+      <span className="text-muted">{label}</span>
+      <span className="text-end text-dark">{value}</span>
     </div>
   );
 }

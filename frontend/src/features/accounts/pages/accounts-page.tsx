@@ -31,10 +31,10 @@ export function AccountsPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Accounts</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="fs-20 fw-bolder mb-0">Accounts</h1>
+          <p className="fs-13 text-muted mb-0">
             Your cash, bank accounts, e-wallets and savings.
           </p>
         </div>
@@ -43,14 +43,14 @@ export function AccountsPage() {
         </Button>
       </div>
 
-      <div className="mt-4 flex gap-1 border-b border-gray-200">
+      <div className="mt-4 nav nav-tabs border-bottom gap-1">
         {(['ACTIVE', 'ARCHIVED'] as const).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`rounded-t-lg px-4 py-2 text-sm font-medium ${
-              tab === t ? 'border-b-2 border-brand text-brand' : 'text-gray-500 hover:text-gray-700'
+            className={`nav-link px-4 py-2 fs-13 fw-medium ${
+              tab === t ? 'active text-primary' : 'text-muted'
             }`}
           >
             {t === 'ACTIVE' ? 'Active' : 'Archived'}
@@ -59,13 +59,13 @@ export function AccountsPage() {
       </div>
 
       {notice ? (
-        <div className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand">{notice}</div>
+        <div className="mt-4 bg-soft-primary text-primary fs-13 p-3 rounded">{notice}</div>
       ) : null}
 
-      <div className="mt-6">
-        {isLoading ? <p className="text-sm text-gray-500">Loading accounts…</p> : null}
+      <div className="mt-4">
+        {isLoading ? <p className="fs-13 text-muted">Loading accounts…</p> : null}
         {isError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="alert alert-danger">
             <p>We could not load your accounts.</p>
             <Button variant="secondary" className="mt-2" onClick={() => void refetch()}>
               Try again
@@ -89,11 +89,11 @@ export function AccountsPage() {
             }
           />
         ) : null}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="row g-4">
           {data?.data.map((account) => (
-            <AccountCard
-              key={account.id}
-              account={account}
+            <div className="col-12 col-md-6 col-lg-4" key={account.id}>
+              <AccountCard
+                account={account}
               onEdit={(a) => { setEditing(a); setFormOpen(true); }}
               onReconcile={(a) => { setReconciling(a); setActualBalance((a.derived_balance / 100).toFixed(2).replace(/\.?0+$/, '')); setReconcileError(null); }}
               onArchiveRestore={(id, isArchive) =>
@@ -102,7 +102,8 @@ export function AccountsPage() {
                   : restore.mutateAsync(id).then(() => flash('Account restored.'))
               }
               onChanged={flash}
-            />
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -113,10 +114,10 @@ export function AccountsPage() {
 
       <Modal open={Boolean(reconciling)} onClose={() => setReconciling(undefined)} title={`Reconcile ${reconciling?.name ?? ''}`}>
         {reconciling ? (
-          <div className="space-y-4 text-sm text-gray-700">
+          <div className="d-flex flex-column gap-3 fs-13 text-secondary">
             <p>
               Tracked balance:{' '}
-              <span className="font-semibold text-gray-900">
+              <span className="fw-semibold text-dark">
                 {formatAmountString((reconciling.derived_balance / 100).toFixed(2), reconciling.currency)}
               </span>
               . Enter what the account actually holds to create a signed adjustment.
@@ -127,8 +128,8 @@ export function AccountsPage() {
               value={actualBalance}
               onChange={(e) => setActualBalance(e.target.value)}
             />
-            {reconcileError ? <p role="alert" className="text-sm text-red-600">{reconcileError}</p> : null}
-            <div className="flex justify-end gap-2">
+            {reconcileError ? <p role="alert" className="text-danger fs-13">{reconcileError}</p> : null}
+            <div className="d-flex justify-content-end gap-2">
               <Button variant="secondary" onClick={() => setReconciling(undefined)}>Cancel</Button>
               <Button
                 onClick={async () => {

@@ -27,35 +27,37 @@ function initialConversation() {
 
 function AssistantAnswer({ response, onSpeak }: { response: CopilotDTO; onSpeak: (text: string) => void }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5">
-      <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">Lenna · grounded answer</span>
-      {response.facts.length > 0 ? (
-        <div className="mt-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Supporting facts</h3>
-          <ul className="mt-2 space-y-2">
-            {response.facts.map((fact, index) => (
-              <li key={`${fact.label}-${index}`} className="flex flex-col gap-1 rounded-lg bg-gray-50 px-3 py-2 text-sm sm:flex-row sm:justify-between">
-                <span className="text-gray-600">{fact.label}</span>
-                <strong>{fact.value}</strong>
-              </li>
-            ))}
-          </ul>
+    <div className="card shadow-sm">
+      <div className="card-body">
+        <span className="badge bg-soft-primary text-primary">Lenna · grounded answer</span>
+        {response.facts.length > 0 ? (
+          <div className="mt-3">
+            <h3 className="fs-12 text-uppercase fw-semibold text-muted">Supporting facts</h3>
+            <ul className="mt-2 list-unstyled d-flex flex-column gap-2 mb-0">
+              {response.facts.map((fact, index) => (
+                <li key={`${fact.label}-${index}`} className="d-flex flex-column gap-1 bg-light rounded-3 p-2 fs-13 flex-sm-row justify-content-sm-between">
+                  <span className="text-secondary">{fact.label}</span>
+                  <strong>{fact.value}</strong>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        <div className="mt-3 border-top pt-3">
+          <div className="d-flex justify-content-between gap-3">
+            <h3 className="fs-12 text-uppercase fw-semibold text-muted mb-0">Answer</h3>
+            <button type="button" onClick={() => onSpeak(response.answer)} className="btn btn-link text-primary p-0 fs-12 fw-medium" aria-label="Read answer aloud">Listen</button>
+          </div>
+          <p className="mt-2 text-dark mb-0">{response.answer}</p>
         </div>
-      ) : null}
-      <div className="mt-4 border-t border-gray-100 pt-4">
-        <div className="flex justify-between gap-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Answer</h3>
-          <button type="button" onClick={() => onSpeak(response.answer)} className="text-xs font-medium text-brand" aria-label="Read answer aloud">Listen</button>
-        </div>
-        <p className="mt-2 text-gray-800">{response.answer}</p>
+        {response.clarification ? <p className="mt-3 alert alert-primary p-3 fs-13 mb-0">Need more detail: {response.clarification}</p> : null}
+        {response.actions.length > 0 ? (
+          <div className="mt-3 fs-13 text-secondary">
+            <h4 className="fs-12 text-uppercase fw-semibold text-muted">Suggested next steps</h4>
+            <ul className="mt-1 mb-0 ps-3">{response.actions.map((action) => <li key={action}>{action}</li>)}</ul>
+          </div>
+        ) : null}
       </div>
-      {response.clarification ? <p className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">Need more detail: {response.clarification}</p> : null}
-      {response.actions.length > 0 ? (
-        <div className="mt-4 text-sm text-gray-600">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Suggested next steps</h4>
-          <ul className="mt-1 list-inside list-disc">{response.actions.map((action) => <li key={action}>{action}</li>)}</ul>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -126,20 +128,20 @@ export function CopilotPage() {
   });
 
   const threadList = (
-    <div className="flex h-full flex-col">
+    <div className="d-flex flex-column h-100">
       <Button type="button" onClick={() => select(null)}>New conversation</Button>
-      <div className="mt-4 flex-1 space-y-1 overflow-y-auto">
-        {conversations.isPending ? <p className="p-2 text-sm text-gray-500">Loading conversations…</p> : null}
-        {conversations.data?.length === 0 ? <p className="p-2 text-sm text-gray-500">No conversations yet.</p> : null}
+      <div className="mt-3 flex-grow-1 d-flex flex-column gap-1 overflow-auto">
+        {conversations.isPending ? <p className="p-2 fs-13 text-muted mb-0">Loading conversations…</p> : null}
+        {conversations.data?.length === 0 ? <p className="p-2 fs-13 text-muted mb-0">No conversations yet.</p> : null}
         {conversations.data?.map((row) => (
-          <div key={row.id} className={`group flex rounded-lg ${activeID === row.id ? 'bg-brand/10' : 'hover:bg-gray-50'}`}>
-            <button type="button" onClick={() => select(row.id)} className="min-h-11 min-w-0 flex-1 truncate px-3 text-left text-sm font-medium">
+          <div key={row.id} className={`d-flex rounded-3 ${activeID === row.id ? 'bg-soft-primary' : ''}`}>
+            <button type="button" onClick={() => select(row.id)} className="btn btn-link text-dark text-start text-truncate flex-grow-1 px-3 fs-13 fw-medium">
               {row.title ?? 'New conversation'}
             </button>
             <button
               type="button"
               aria-label={`Delete ${row.title ?? 'conversation'}`}
-              className="min-h-11 px-3 text-gray-400 hover:text-red-600"
+              className="btn btn-link text-muted px-3"
               onClick={async () => {
                 await mutations.remove.mutateAsync(row.id);
                 if (activeID === row.id) select(null);
@@ -152,58 +154,62 @@ export function CopilotPage() {
   );
 
   return (
-    <div className="grid min-h-[70vh] gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
-      <aside className="hidden rounded-2xl border border-gray-200 bg-white p-3 lg:block">{threadList}</aside>
-      <section className="min-w-0">
-        <header className="flex items-start justify-between gap-3">
+    <div className="row g-4 mt-1">
+      <aside className="col-lg-3 d-none d-lg-block">
+        <div className="card h-100">
+          <div className="card-body p-2">{threadList}</div>
+        </div>
+      </aside>
+      <section className="col-lg-9">
+        <header className="d-flex align-items-start justify-content-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setDrawerOpen(true)} className="min-h-11 rounded-lg border px-3 text-sm lg:hidden">Conversations</button>
-              <h1 className="text-2xl font-semibold">Lenna</h1>
+            <div className="d-flex align-items-center gap-2">
+              <button type="button" onClick={() => setDrawerOpen(true)} className="btn btn-outline-secondary d-lg-none fs-13">Conversations</button>
+              <h1 className="fs-20 fw-bolder mb-0">Lenna</h1>
             </div>
-            <p className="mt-1 text-sm text-gray-500">Read-only financial guidance grounded in deterministic Savio tools.</p>
+            <p className="mt-1 fs-13 text-muted mb-0">Read-only financial guidance grounded in deterministic Savio tools.</p>
           </div>
-          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-sm">
+          <div className="d-inline-flex border rounded-3 bg-white p-1 fs-13">
             {(['text', 'talk'] as const).map((value) => (
-              <button key={value} type="button" disabled={value === 'talk' && !mic.supported} onClick={() => setMode(value)} className={`rounded-md px-3 py-1.5 capitalize ${mode === value ? 'bg-brand text-white' : 'text-gray-600'}`}>{value === 'text' ? 'Text' : 'Talk'}</button>
+              <button key={value} type="button" disabled={value === 'talk' && !mic.supported} onClick={() => setMode(value)} className={`rounded-2 px-2 py-1 text-capitalize ${mode === value ? 'bg-primary text-white' : 'text-secondary'}`}>{value === 'text' ? 'Text' : 'Talk'}</button>
             ))}
           </div>
         </header>
 
-        {disabled ? <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">AI is disabled. Finance features remain available.</div> : null}
+        {disabled ? <div className="mt-4 alert alert-warning p-3 fs-13 mb-0">AI is disabled. Finance features remain available.</div> : null}
 
-        <div className="mt-6 space-y-5" aria-live="polite">
-          {activeID && conversation.isPending ? <div className="rounded-2xl border bg-white p-6 text-sm text-gray-500">Loading conversation…</div> : null}
+        <div className="mt-4 d-flex flex-column gap-3" aria-live="polite">
+          {activeID && conversation.isPending ? <div className="card"><div className="card-body p-4 fs-13 text-muted">Loading conversation…</div></div> : null}
           {(conversation.data?.messages ?? []).map((message) => message.role === 'USER' ? (
-            <div key={message.id} className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-brand/10 px-4 py-3 text-sm text-gray-800">{message.content}</div>
+            <div key={message.id} className="ms-auto align-self-end rounded-4 bg-soft-primary px-3 py-2 fs-13 text-dark" style={{ maxWidth: '85%' }}>{message.content}</div>
           ) : message.response ? (
             <AssistantAnswer key={message.id} response={message.response} onSpeak={(text) => speech.speak(text)} />
           ) : null)}
-          {busy ? <div className="rounded-2xl border bg-white p-5 text-sm text-gray-500">Gathering current facts…</div> : null}
+          {busy ? <div className="card"><div className="card-body p-3 fs-13 text-muted">Gathering current facts…</div></div> : null}
           <div ref={endRef} />
         </div>
 
         {!conversation.data?.messages?.length ? (
-          <div className="mt-5 flex flex-wrap gap-2">
-            {SUGGESTIONS.map((suggestion) => <button key={suggestion} type="button" disabled={disabled || busy} onClick={() => void run(suggestion)} className="rounded-full border bg-white px-3 py-1.5 text-xs text-gray-600 hover:border-brand hover:text-brand">{suggestion}</button>)}
+          <div className="mt-4 d-flex flex-wrap gap-2">
+            {SUGGESTIONS.map((suggestion) => <button key={suggestion} type="button" disabled={disabled || busy} onClick={() => void run(suggestion)} className="btn btn-outline-primary rounded-pill fs-12">{suggestion}</button>)}
           </div>
         ) : null}
 
-        {error ? <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{error}</div> : null}
-        {mic.error ? <p className="mt-2 text-sm text-red-600">{mic.error}</p> : null}
+        {error ? <div className="mt-4 alert alert-warning p-3 fs-13 mb-0">{error}</div> : null}
+        {mic.error ? <p className="mt-2 fs-13 text-danger mb-0">{mic.error}</p> : null}
 
-        <form className="sticky bottom-2 mt-6 flex items-end gap-2 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm" onSubmit={(event) => { event.preventDefault(); void run(question); }}>
-          <div className="flex-1"><TextField label="Ask Lenna" placeholder="e.g. Can I afford a 20M laptop?" value={question} maxLength={2000} disabled={disabled} onChange={(event) => setQuestion(event.target.value)} /></div>
-          {mode === 'talk' && mic.supported ? <button type="button" disabled={disabled || busy} onClick={() => mic.listening ? mic.stop() : mic.start()} aria-label={mic.listening ? 'Stop listening' : 'Speak your question'} className="mb-0 h-10 w-10 rounded-full border text-brand">{mic.listening ? '■' : 'Mic'}</button> : null}
+        <form className="sticky-bottom mt-4 d-flex align-items-end gap-2 border rounded-3 bg-white p-2 shadow-sm" style={{ bottom: '0.5rem' }} onSubmit={(event) => { event.preventDefault(); void run(question); }}>
+          <div className="flex-grow-1"><TextField label="Ask Lenna" placeholder="e.g. Can I afford a 20M laptop?" value={question} maxLength={2000} disabled={disabled} onChange={(event) => setQuestion(event.target.value)} /></div>
+          {mode === 'talk' && mic.supported ? <button type="button" disabled={disabled || busy} onClick={() => mic.listening ? mic.stop() : mic.start()} aria-label={mic.listening ? 'Stop listening' : 'Speak your question'} className="btn btn-outline-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40 }}>{mic.listening ? '■' : 'Mic'}</button> : null}
           <Button type="submit" disabled={disabled || busy || !question.trim()}>{busy ? 'Analyzing…' : 'Ask'}</Button>
         </form>
       </section>
 
       {drawerOpen ? (
-        <div role="dialog" aria-modal="true" aria-label="Copilot conversations" className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" aria-label="Close conversations" onClick={() => setDrawerOpen(false)} className="absolute inset-0 bg-black/40" />
-          <aside className="relative h-full w-[min(20rem,85vw)] bg-white p-4 shadow-xl">
-            <button type="button" onClick={() => setDrawerOpen(false)} className="mb-4 min-h-11 text-sm font-medium">Close</button>
+        <div role="dialog" aria-modal="true" aria-label="Copilot conversations" className="position-fixed top-0 start-0 w-100 h-100 d-lg-none" style={{ zIndex: 1050 }}>
+          <button type="button" aria-label="Close conversations" onClick={() => setDrawerOpen(false)} className="position-absolute top-0 start-0 w-100 h-100 border-0" style={{ background: 'rgba(0,0,0,0.4)' }} />
+          <aside className="position-relative h-100 bg-white p-3 shadow-lg" style={{ width: 'min(20rem, 85vw)' }}>
+            <button type="button" onClick={() => setDrawerOpen(false)} className="btn btn-link fs-13 fw-medium p-0 mb-3">Close</button>
             {threadList}
           </aside>
         </div>

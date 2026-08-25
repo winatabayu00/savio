@@ -128,31 +128,30 @@ export function RecurringPage() {
     }
   });
 
-  const inputCls =
-    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30';
-  const labelCls = 'mb-1.5 block text-sm font-medium text-gray-700';
+  const inputCls = 'form-select';
+  const labelCls = 'form-label';
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Recurring Transactions</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="fs-20 fw-bolder mb-0">Recurring Transactions</h1>
+          <p className="fs-13 text-muted mb-0 mt-1">
             Planned income and expenses. You confirm each scheduled occurrence before it becomes actual.
           </p>
         </div>
         <Button onClick={openCreate}>New Recurring</Button>
       </div>
 
-      {notice ? <div className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand">{notice}</div> : null}
-      {isLoading ? <p className="mt-6 text-sm text-gray-500">Loading recurring transactions…</p> : null}
+      {notice ? <div className="mt-4 bg-soft-primary text-primary p-3 fs-13 rounded-3">{notice}</div> : null}
+      {isLoading ? <p className="mt-4 fs-13 text-muted">Loading recurring transactions…</p> : null}
       {isError ? (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-4 alert alert-danger p-3 fs-13 mb-0">
           We could not load recurring transactions.
         </div>
       ) : null}
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-4 d-flex flex-column gap-3">
         {rules && rules.length === 0 ? (
           <EmptyState
             title="No recurring transactions yet"
@@ -191,16 +190,16 @@ export function RecurringPage() {
       </div>
 
       <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit recurring transaction' : 'New recurring transaction'}>
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+        <form onSubmit={onSubmit} className="d-flex flex-column gap-3" noValidate>
+          <div className="row g-3">
+            <div className="col-6">
               <label className={labelCls}>Type</label>
               <select className={inputCls} {...register('type')}>
                 <option value="EXPENSE">Expense</option>
                 <option value="INCOME">Income</option>
               </select>
             </div>
-            <div>
+            <div className="col-6">
               <label className={labelCls}>Frequency</label>
               <select className={inputCls} {...register('frequency')}>
                 <option value="MONTHLY">Monthly</option>
@@ -218,7 +217,7 @@ export function RecurringPage() {
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
-            {errors.account_id ? <p className="mt-1 text-xs text-red-600">{errors.account_id.message}</p> : null}
+            {errors.account_id ? <p className="mt-1 fs-12 text-danger">{errors.account_id.message}</p> : null}
           </div>
           <div>
             <label className={labelCls}>Category</label>
@@ -231,17 +230,25 @@ export function RecurringPage() {
                 ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <TextField label="Amount" inputMode="decimal" error={errors.amount?.message} {...register('amount')} />
-            <TextField label="Merchant (optional)" {...register('merchant')} />
+          <div className="row g-3">
+            <div className="col-6">
+              <TextField label="Amount" inputMode="decimal" error={errors.amount?.message} {...register('amount')} />
+            </div>
+            <div className="col-6">
+              <TextField label="Merchant (optional)" {...register('merchant')} />
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <TextField label="Start date" type="date" error={errors.start_date?.message} {...register('start_date')} />
-            <TextField label="End date (optional)" type="date" {...register('end_date')} />
+          <div className="row g-3">
+            <div className="col-6">
+              <TextField label="Start date" type="date" error={errors.start_date?.message} {...register('start_date')} />
+            </div>
+            <div className="col-6">
+              <TextField label="End date (optional)" type="date" {...register('end_date')} />
+            </div>
           </div>
           <TextField label="Description (optional)" {...register('description')} />
-          {formError ? <p role="alert" className="text-sm text-red-600">{formError}</p> : null}
-          <div className="flex justify-end gap-2 pt-2">
+          {formError ? <p role="alert" className="fs-13 text-danger mb-0">{formError}</p> : null}
+          <div className="d-flex justify-content-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setFormOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {editing ? 'Save changes' : 'Create recurring'}
@@ -274,35 +281,35 @@ function RecurringRow({
 }) {
   const occurrences = useOccurrences(rule.id);
   const statusStyles: Record<string, string> = {
-    ACTIVE: 'bg-green-100 text-green-700',
-    PAUSED: 'bg-amber-100 text-amber-700',
-    ENDED: 'bg-gray-100 text-gray-500',
+    ACTIVE: 'badge bg-soft-success text-success',
+    PAUSED: 'badge bg-soft-warning text-warning',
+    ENDED: 'badge bg-soft-secondary text-secondary',
   };
   return (
-    <div className="rounded-xl border border-gray-200 bg-white">
-      <button type="button" onClick={onToggle} className="flex w-full items-center justify-between px-5 py-4 text-left">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-gray-900">{rule.description || `${rule.type.toLowerCase()} rule`}</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[rule.status]}`}>{rule.status}</span>
+    <div className="card">
+      <button type="button" onClick={onToggle} className="d-flex w-100 align-items-center justify-content-between p-3 text-start">
+        <div className="text-truncate">
+          <div className="d-flex align-items-center gap-2">
+            <span className="fw-semibold text-dark">{rule.description || `${rule.type.toLowerCase()} rule`}</span>
+            <span className={statusStyles[rule.status]}>{rule.status}</span>
           </div>
-          <div className="mt-0.5 text-sm text-gray-500">
+          <div className="mt-1 fs-13 text-muted">
             {rule.frequency} · {rule.account_name}
             {rule.category_name ? ` · ${rule.category_name}` : ''}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`font-semibold ${rule.type === 'EXPENSE' ? 'text-red-600' : 'text-green-600'}`}>
+        <div className="d-flex align-items-center gap-3">
+          <span className={`fw-semibold ${rule.type === 'EXPENSE' ? 'text-danger' : 'text-success'}`}>
             {rule.type === 'EXPENSE' ? '−' : '+'}
             {formatAmountString(rule.amount, currency)}
           </span>
-          <span className="text-gray-400">{expanded ? '▾' : '▸'}</span>
+          <span className="text-muted">{expanded ? '▾' : '▸'}</span>
         </div>
       </button>
 
       {expanded ? (
-        <div className="border-t border-gray-100 px-5 py-4">
-          <div className="flex flex-wrap gap-2">
+        <div className="border-top border-light p-3">
+          <div className="d-flex flex-wrap gap-2">
             <Button variant="secondary" onClick={onEdit}>Edit</Button>
             {rule.status === 'ACTIVE' ? (
               <Button variant="secondary" onClick={() => onStatus('pause')}>Pause</Button>
@@ -315,16 +322,16 @@ function RecurringRow({
             ) : null}
           </div>
 
-          <h3 className="mt-4 text-sm font-semibold text-gray-700">Upcoming occurrences</h3>
-          {occurrences.isLoading ? <p className="mt-2 text-sm text-gray-500">Loading…</p> : null}
-          <ul className="mt-2 space-y-2">
+          <h3 className="mt-3 fs-13 fw-semibold text-secondary">Upcoming occurrences</h3>
+          {occurrences.isLoading ? <p className="mt-2 fs-13 text-muted">Loading…</p> : null}
+          <ul className="mt-2 list-unstyled d-flex flex-column gap-2 mb-0">
             {(occurrences.data ?? []).map((occ) => (
-              <li key={occ.id} className="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-2.5 text-sm">
+              <li key={occ.id} className="d-flex align-items-center justify-content-between border rounded p-2 fs-13">
                 <div>
-                  <span className="font-medium text-gray-900">{occ.due_date}</span>
-                  <span className="ml-2 text-xs text-gray-500">{occ.status.toLowerCase()}</span>
+                  <span className="fw-medium text-dark">{occ.due_date}</span>
+                  <span className="ms-2 fs-12 text-muted">{occ.status.toLowerCase()}</span>
                 </div>
-                <div className="flex gap-2">
+                <div className="d-flex gap-2">
                   {occ.status === 'PENDING' ? (
                     <>
                       <Button variant="secondary" onClick={() => onConfirm(occ)}>{rule.type === 'INCOME' ? 'Got it' : 'Pay'}</Button>
@@ -335,7 +342,7 @@ function RecurringRow({
               </li>
             ))}
             {occurrences.data && occurrences.data.length === 0 ? (
-              <p className="text-sm text-gray-500">No scheduled occurrences.</p>
+              <p className="fs-13 text-muted mb-0">No scheduled occurrences.</p>
             ) : null}
           </ul>
         </div>

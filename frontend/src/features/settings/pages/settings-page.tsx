@@ -42,39 +42,42 @@ export function SettingsPage() {
     items.map(([label, value]) => (
       <div
         key={label}
-        className="flex items-center justify-between border-b border-gray-100 py-3 last:border-0"
+        className="d-flex align-items-center justify-content-between border-bottom py-3"
       >
-        <span className="text-sm text-gray-500">{label}</span>
-        <span className="text-sm font-medium text-gray-800">{value || '-'}</span>
+        <span className="fs-13 text-muted">{label}</span>
+        <span className="fs-13 fw-medium text-dark">{value || '-'}</span>
       </div>
     ));
 
   const Toggle = ({ label, key, value }: { label: string; key: keyof UserSettings; value: boolean }) => (
-    <label className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-      <span className="text-sm text-gray-700">{label}</span>
+    <label className="d-flex align-items-center justify-content-between py-3 border-bottom">
+      <span className="fs-13 text-secondary">{label}</span>
       <input
         type="checkbox"
         checked={value}
         onChange={(e) => set(key, e.target.checked)}
-        className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+        className="form-check-input mt-0"
       />
     </label>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="d-flex flex-column gap-3">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Pengaturan</h1>
-        <p className="mt-1 text-sm text-gray-500">Preferensi akun dan ruang kerja Anda.</p>
+        <h1 className="fs-20 fw-bolder text-dark mb-0">Pengaturan</h1>
+        <p className="mt-1 fs-13 text-muted mb-0">Preferensi akun dan ruang kerja Anda.</p>
       </div>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="mb-2 text-base font-semibold text-gray-900">Akun</h2>
+      <section className="card shadow-sm">
+        <div className="card-body">
+        <h2 className="fs-16 fw-semibold text-dark mb-3">Akun</h2>
         <div>{rows([['Nama', user.name], ['Email', user.email], ['Peran', role]])}</div>
+        </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="mb-2 text-base font-semibold text-gray-900">Ruang Kerja</h2>
+      <section className="card shadow-sm">
+        <div className="card-body">
+        <h2 className="fs-16 fw-semibold text-dark mb-3">Ruang Kerja</h2>
         <div>
           {rows([
             ['Nama', workspace.name],
@@ -82,16 +85,18 @@ export function SettingsPage() {
             ['Zona waktu', workspace.timezone],
           ])}
         </div>
+        </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="mb-2 text-base font-semibold text-gray-900">Preferensi</h2>
+      <section className="card shadow-sm">
+        <div className="card-body">
+        <h2 className="fs-16 fw-semibold text-dark mb-3">Preferensi</h2>
         <Toggle label="AI Insights" key="ai_insights_enabled" value={form.ai_insights_enabled} />
         <Toggle label="AI Copilot" key="ai_copilot_enabled" value={form.ai_copilot_enabled} />
         <Toggle label="Notifikasi" key="notifications_enabled" value={form.notifications_enabled} />
 
-        <div className="py-3 border-b border-gray-100 last:border-0">
-          <label htmlFor="budget_threshold" className="text-sm text-gray-700">
+        <div className="py-3 border-bottom">
+          <label htmlFor="budget_threshold" className="form-label mb-1">
             Ambang peringatan anggaran (%)
           </label>
           <input
@@ -104,12 +109,12 @@ export function SettingsPage() {
               const n = e.target.value === '' ? 0 : Number(e.target.value);
               set('budget_warning_threshold', n);
             }}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+            className="form-control"
           />
         </div>
 
-        <div className="py-3 border-b border-gray-100 last:border-0">
-          <label htmlFor="low_balance" className="text-sm text-gray-700">
+        <div className="py-3 border-bottom">
+          <label htmlFor="low_balance" className="form-label mb-1">
             Ambang saldo rendah (minor units)
           </label>
           <input
@@ -120,25 +125,26 @@ export function SettingsPage() {
             onChange={(e) =>
               set('low_balance_threshold', e.target.value === '' ? null : Number(e.target.value))
             }
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+            className="form-control"
           />
         </div>
 
         {save.isError && (
-          <p className="mt-3 text-sm text-red-600">
+          <p className="mt-3 fs-13 text-danger mb-0">
             Gagal menyimpan perubahan. Silakan coba lagi.
           </p>
         )}
-        {save.isPending && <p className="mt-3 text-sm text-gray-500">Menyimpan…</p>}
+        {save.isPending && <p className="mt-3 fs-13 text-muted mb-0">Menyimpan…</p>}
 
         <button
           type="button"
           disabled={!notSaved || save.isPending}
           onClick={() => save.mutate(form)}
-          className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn btn-success mt-3"
         >
           Simpan Perubahan
         </button>
+        </div>
       </section>
 
       <AiConfigSection canEdit={role === 'OWNER'} />
@@ -171,7 +177,7 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
   const f = ai ? { ...ai, ...draft } : null;
   if (!f) {
     if (aiConfig.isPending || !canEdit) return null;
-    return <p className="text-sm text-red-600">Gagal memuat konfigurasi AI.</p>;
+    return <p className="fs-13 text-danger">Gagal memuat konfigurasi AI.</p>;
   }
 
   const dirty =
@@ -184,35 +190,36 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
   const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input
       {...props}
-      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+      className="form-control"
     />
   );
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6">
-      <h2 className="mb-1 text-base font-semibold text-gray-900">Kecerdasan Buatan (AI)</h2>
-      <p className="mb-4 text-sm text-gray-500">
+    <section className="card shadow-sm">
+      <div className="card-body">
+      <h2 className="fs-16 fw-semibold text-dark mb-1">Kecerdasan Buatan (AI)</h2>
+      <p className="mb-3 fs-13 text-muted">
         Konfigurasi penyedia AI. Simpan di sini menggantikan pengaturan via variabel lingkungan (ENV).
       </p>
 
       {!canEdit && (
-        <p className="mb-4 text-sm text-gray-500">
+        <p className="mb-3 fs-13 text-muted">
           Hanya pemilik ruang kerja yang dapat mengubah konfigurasi AI.
         </p>
       )}
 
-      <label className="flex items-center justify-between py-2">
-        <span className="text-sm text-gray-700">Aktifkan AI</span>
+      <label className="d-flex align-items-center justify-content-between py-2">
+        <span className="fs-13 text-secondary">Aktifkan AI</span>
         <input
           type="checkbox"
           checked={f.enabled}
           onChange={(e) => update({ enabled: e.target.checked })}
-          className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+          className="form-check-input mt-0"
         />
       </label>
 
       <div className="mt-2">
-        <label htmlFor="ai_provider" className="text-sm text-gray-700">
+        <label htmlFor="ai_provider" className="form-label mb-1">
           Penyedia
         </label>
         <select
@@ -220,7 +227,7 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
           value={f.provider === 'mock' ? 'mock' : 'openai'}
           onChange={(e) => update({ provider: e.target.value })}
           disabled={!canEdit}
-          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+          className="form-select"
         >
           <option value="openai">OpenAI-compatible (OpenAI, Groq, Ollama...)</option>
           <option value="mock">Mock (uji coba offline)</option>
@@ -228,7 +235,7 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
       </div>
 
       <div className="mt-3">
-        <label htmlFor="ai_base_url" className="text-sm text-gray-700">
+        <label htmlFor="ai_base_url" className="form-label mb-1">
           Base URL API
         </label>
         <Input
@@ -241,7 +248,7 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
       </div>
 
       <div className="mt-3">
-        <label htmlFor="ai_api_key" className="text-sm text-gray-700">
+        <label htmlFor="ai_api_key" className="form-label mb-1">
           API Key
         </label>
         <Input
@@ -253,13 +260,13 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
           autoComplete="new-password"
           disabled={!canEdit}
         />
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 fs-12 text-muted mb-0">
           Kunci tersimpan memiliki: {f.api_key_masked || '—'}. Kosongkan untuk mempertahankan kunci yang ada.
         </p>
       </div>
 
       <div className="mt-3">
-        <label htmlFor="ai_model" className="text-sm text-gray-700">
+        <label htmlFor="ai_model" className="form-label mb-1">
           Model
         </label>
         <Input
@@ -272,7 +279,7 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
       </div>
 
       <div className="mt-3">
-        <label htmlFor="ai_persona" className="text-sm text-gray-700">
+        <label htmlFor="ai_persona" className="form-label mb-1">
           Personality AI
         </label>
         <select
@@ -280,19 +287,19 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
           value={f.persona || 'balanced'}
           onChange={(e) => update({ persona: e.target.value })}
           disabled={!canEdit}
-          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+          className="form-select"
         >
           <option value="balanced">Savio Copilot — Asisten keuangan netral</option>
           <option value="lenna">Lenna — Penasihat keuangan pribadi</option>
         </select>
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 fs-12 text-muted mb-0">
           Personality membentuk nada jawaban AI Copilot dan AI Insights. Lenna berbicara seperti
           penasihat keuangan pribadi yang tenang dan berwawasan ke depan.
         </p>
       </div>
 
       <div className="mt-3">
-        <label htmlFor="ai_timeout" className="text-sm text-gray-700">
+        <label htmlFor="ai_timeout" className="form-label mb-1">
           Timeout (detik)
         </label>
         <Input
@@ -307,20 +314,21 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
       </div>
 
       {saveConfig.isError && (
-        <p className="mt-3 text-sm text-red-600">Gagal menyimpan konfigurasi AI. Silakan coba lagi.</p>
+        <p className="mt-3 fs-13 text-danger mb-0">Gagal menyimpan konfigurasi AI. Silakan coba lagi.</p>
       )}
-      {saveConfig.isPending && <p className="mt-3 text-sm text-gray-500">Menyimpan…</p>}
+      {saveConfig.isPending && <p className="mt-3 fs-13 text-muted mb-0">Menyimpan…</p>}
 
       {canEdit && (
         <button
           type="button"
           disabled={!dirty || saveConfig.isPending}
           onClick={() => saveConfig.mutate(draft ?? {})}
-          className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn btn-success mt-3"
         >
           Simpan Konfigurasi AI
         </button>
       )}
+      </div>
     </section>
   );
 }
@@ -355,7 +363,7 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
   const f = cfg ? { ...cfg, ...draft } : null;
   if (!f) {
     if (tgConfig.isPending || !canEdit) return null;
-    return <p className="text-sm text-red-600">Gagal memuat konfigurasi Telegram.</p>;
+    return <p className="fs-13 text-danger">Gagal memuat konfigurasi Telegram.</p>;
   }
 
   const dirty =
@@ -367,38 +375,39 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
   const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input
       {...props}
-      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+      className="form-control"
     />
   );
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6">
-      <h2 className="mb-1 text-base font-semibold text-gray-900">Telegram Recap</h2>
-      <p className="mb-4 text-sm text-gray-500">
+    <section className="card shadow-sm">
+      <div className="card-body">
+      <h2 className="fs-16 fw-semibold text-dark mb-1">Telegram Recap</h2>
+      <p className="mb-3 fs-13 text-muted">
         Sambungkan bot Telegram agar pengeluaran bisa dicatat langsung dari chat.
-        Cukup kirim <span className="font-medium">nama + nominal</span>, misal{' '}
-        <span className="font-medium">chocolate hazelnut dutch 24000</span> — Savio
+        Cukup kirim <span className="fw-medium">nama + nominal</span>, misal{' '}
+        <span className="fw-medium">chocolate hazelnut dutch 24000</span> — Savio
         mencatatnya ke ruang kerja ini dengan kategori otomatis.
       </p>
 
       {!canEdit && (
-        <p className="mb-4 text-sm text-gray-500">
+        <p className="mb-3 fs-13 text-muted">
           Hanya pemilik ruang kerja yang dapat mengubah konfigurasi Telegram.
         </p>
       )}
 
-      <label className="flex items-center justify-between py-2">
-        <span className="text-sm text-gray-700">Aktifkan Telegram Recap</span>
+      <label className="d-flex align-items-center justify-content-between py-2">
+        <span className="fs-13 text-secondary">Aktifkan Telegram Recap</span>
         <input
           type="checkbox"
           checked={f.enabled}
           onChange={(e) => update({ enabled: e.target.checked })}
-          className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+          className="form-check-input mt-0"
         />
       </label>
 
       <div className="mt-3">
-        <label htmlFor="tg_token" className="text-sm text-gray-700">
+        <label htmlFor="tg_token" className="form-label mb-1">
           Bot Token
         </label>
         <Input
@@ -410,13 +419,13 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
           autoComplete="new-password"
           disabled={!canEdit}
         />
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 fs-12 text-muted mb-0">
           Token tersimpan: {f.bot_token_masked || '—'}. Kosongkan untuk mempertahankan token yang ada.
         </p>
       </div>
 
       <div className="mt-3">
-        <label htmlFor="tg_chat" className="text-sm text-gray-700">
+        <label htmlFor="tg_chat" className="form-label mb-1">
           ID Chat yang Diizinkan
         </label>
         <Input
@@ -426,40 +435,40 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
           placeholder="contoh: 123456789"
           disabled={!canEdit}
         />
-        <p className="mt-1 text-xs text-gray-400">
-          Kirim <span className="font-medium">/start</span> ke bot Anda, lalu aktifkan{' '}
-          <span className="font-medium">Mode Pengembang</span> &gt;{' '}
-          <span className="font-medium">Chat ID</span> di Telegram untuk melihat ID chat
+        <p className="mt-1 fs-12 text-muted mb-0">
+          Kirim <span className="fw-medium">/start</span> ke bot Anda, lalu aktifkan{' '}
+          <span className="fw-medium">Mode Pengembang</span> &gt;{' '}
+          <span className="fw-medium">Chat ID</span> di Telegram untuk melihat ID chat
           pribadi Anda. Kosongkan agar pesan hanya dibalas instruksi.
         </p>
       </div>
 
-      <div className="mt-3 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800">
+      <div className="mt-3 alert alert-success p-3 fs-12 mb-0">
         Transaksi yang masuk akan dicatat sebagai pengeluaran <b>POSTED</b> (langsung
         memengaruhi saldo) dengan kategori otomatis dan sumber 'TELEGRAM'.
       </div>
 
-      <div className="mt-5 border-t border-gray-100 pt-4">
-        <h3 className="text-sm font-semibold text-gray-900">Webhook (pusat langsung)</h3>
-        <p className="mb-2 mt-1 text-xs text-gray-500">
+      <div className="mt-4 border-top pt-3">
+        <h3 className="fs-13 fw-semibold text-dark mb-0">Webhook (pusat langsung)</h3>
+        <p className="mb-2 mt-1 fs-12 text-muted">
           Default: worker mengetik pesan setiap ±25 detik (long-poll). Untuk penerimaan yang
           instan, daftarkan webhook ke URL <b>https</b> publik yang menuju ke backend Savio —
           misalnya tunnel{' '}
-          <span className="font-medium">ngrok http 8080</span> lalu pakai URL
-          <span className="font-medium"> https://xxx.ngrok-free.app</span>. Setiap pesan
+          <span className="fw-medium">ngrok http 8080</span> lalu pakai URL
+          <span className="fw-medium"> https://xxx.ngrok-free.app</span>. Setiap pesan
           langsung masuk tanpa tundaan polling.
         </p>
 
         {f.webhook_url ? (
-          <div className="rounded-lg bg-gray-50 p-3 text-xs">
-            <p className="font-medium text-gray-700">Webhook terdaftar:</p>
-            <code className="mt-1 block break-all text-emerald-700">{f.webhook_url}</code>
+          <div className="bg-light p-3 fs-12 rounded-3">
+            <p className="fw-medium text-secondary mb-1">Webhook terdaftar:</p>
+            <code className="d-block text-success text-break">{f.webhook_url}</code>
             {canEdit && (
               <button
                 type="button"
                 disabled={registerWebhook.isPending}
                 onClick={() => registerWebhook.mutate('')}
-                className="mt-2 rounded-md border border-gray-300 px-3 py-1 text-xs text-gray-600 transition hover:bg-gray-100"
+                className="btn btn-outline-secondary btn-sm mt-2"
               >
                 Hapus Webhook (kembali ke long-poll)
               </button>
@@ -467,19 +476,19 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
           </div>
         ) : (
           canEdit && (
-            <div className="flex gap-2">
+            <div className="d-flex gap-2">
               <input
                 type="url"
                 value={webhookBase}
                 onChange={(e) => setWebhookBase(e.target.value)}
                 placeholder="https://xxx.ngrok-free.app"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                className="form-control"
               />
               <button
                 type="button"
                 disabled={registerWebhook.isPending || !webhookBase}
                 onClick={() => registerWebhook.mutate(webhookBase)}
-                className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="btn btn-success flex-shrink-0"
               >
                 Daftarkan Webhook
               </button>
@@ -487,7 +496,7 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
           )
         )}
         {registerWebhook.isError && (
-          <p className="mt-2 text-xs text-red-600">
+          <p className="mt-2 fs-12 text-danger mb-0">
             Gagal mendaftarkan webhook. Pastikan URL https publik dan worker berjalan (proses
             konfigurasi bot). Long-poll masih aktif.
           </p>
@@ -495,20 +504,21 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
       </div>
 
       {saveConfig.isError && (
-        <p className="mt-3 text-sm text-red-600">Gagal menyimpan konfigurasi Telegram. Silakan coba lagi.</p>
+        <p className="mt-3 fs-13 text-danger mb-0">Gagal menyimpan konfigurasi Telegram. Silakan coba lagi.</p>
       )}
-      {saveConfig.isPending && <p className="mt-3 text-sm text-gray-500">Menyimpan…</p>}
+      {saveConfig.isPending && <p className="mt-3 fs-13 text-muted mb-0">Menyimpan…</p>}
 
       {canEdit && (
         <button
           type="button"
           disabled={!dirty || saveConfig.isPending}
           onClick={() => saveConfig.mutate(draft ?? {})}
-          className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn btn-success mt-3"
         >
           Simpan Konfigurasi Telegram
         </button>
       )}
+      </div>
     </section>
   );
 }

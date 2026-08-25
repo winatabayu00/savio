@@ -137,30 +137,31 @@ export function TransactionFormModal({ open, onClose, onError, editTx }: Props) 
     }
   });
 
-  const inputCls =
-    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30';
-  const labelCls = 'mb-1.5 block text-sm font-medium text-gray-700';
+  const inputCls = 'form-select';
+  const labelCls = 'form-label';
 
   return (
     <Modal open={open} onClose={onClose} title={editTx ? 'Edit transaction' : 'Add income or expense'}>
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
+      <form onSubmit={onSubmit} noValidate>
+        <div className="row g-3 mb-3">
+          <div className="col-6">
             <label htmlFor="tx-type" className={labelCls}>Type</label>
             <select id="tx-type" className={inputCls} {...register('type')}>
               <option value="EXPENSE">Expense</option>
               <option value="INCOME">Income</option>
             </select>
           </div>
-          <TextField
-            label="Amount"
-            inputMode="decimal"
-            placeholder="0.00"
-            error={errors.amount?.message}
-            {...register('amount')}
-          />
+          <div className="col-6">
+            <TextField
+              label="Amount"
+              inputMode="decimal"
+              placeholder="0.00"
+              error={errors.amount?.message}
+              {...register('amount')}
+            />
+          </div>
         </div>
-        <div>
+        <div className="mb-3">
           <label htmlFor="tx-account" className={labelCls}>Account</label>
           <select id="tx-account" className={inputCls} {...register('account_id')}>
             <option value="">Select account…</option>
@@ -168,9 +169,9 @@ export function TransactionFormModal({ open, onClose, onError, editTx }: Props) 
               <option key={a.id} value={a.id}>{a.name}</option>
             ))}
           </select>
-          {errors.account_id ? <p className="mt-1 text-xs text-red-600">{errors.account_id.message}</p> : null}
+          {errors.account_id ? <p className="text-danger fs-12 mt-1">{errors.account_id.message}</p> : null}
         </div>
-        <div>
+        <div className="mb-3">
           <label htmlFor="tx-cat" className={labelCls}>Category</label>
           <select id="tx-cat" className={inputCls} {...register('category_id')}>
             <option value="">No category</option>
@@ -178,26 +179,34 @@ export function TransactionFormModal({ open, onClose, onError, editTx }: Props) 
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-          {errors.category_id ? <p className="mt-1 text-xs text-red-600">{errors.category_id.message}</p> : null}
+          {errors.category_id ? <p className="text-danger fs-12 mt-1">{errors.category_id.message}</p> : null}
           <button
             type="button"
             onClick={() => void onSuggest()}
             disabled={aiBusy || (!description && !merchant)}
-            className="mt-2 text-xs font-medium text-brand hover:underline disabled:opacity-50"
+            className="btn btn-link p-0 mt-2 fs-12 fw-medium text-primary"
           >
             {aiBusy ? 'Asking AI…' : 'Suggest category with AI'}
           </button>
-          {aiHint ? <p className="mt-1 text-xs text-brand">{aiHint}</p> : null}
+          {aiHint ? <p className="text-primary fs-12 mt-1">{aiHint}</p> : null}
         </div>
-        <TextField label="Date" type="date" error={errors.transaction_date?.message} {...register('transaction_date')} />
-        <TextField label="Description" placeholder="e.g. Grocery shopping" error={errors.description?.message} {...register('description')} />
-        <div className="grid grid-cols-2 gap-3">
-          <TextField label="Merchant" placeholder="Optional" {...register('merchant')} />
-          <TextField label="Notes" placeholder="Optional" {...register('notes')} />
+        <div className="mb-3">
+          <TextField label="Date" type="date" error={errors.transaction_date?.message} {...register('transaction_date')} />
         </div>
-        {formError ? <p role="alert" className="text-sm text-red-600">{formError}</p> : null}
+        <div className="mb-3">
+          <TextField label="Description" placeholder="e.g. Grocery shopping" error={errors.description?.message} {...register('description')} />
+        </div>
+        <div className="row g-3 mb-3">
+          <div className="col-6">
+            <TextField label="Merchant" placeholder="Optional" {...register('merchant')} />
+          </div>
+          <div className="col-6">
+            <TextField label="Notes" placeholder="Optional" {...register('notes')} />
+          </div>
+        </div>
+        {formError ? <p role="alert" className="text-danger fs-13">{formError}</p> : null}
         {editTx ? (
-          <div className="flex gap-2 pt-1">
+          <div className="d-flex gap-2 pt-1">
             <Button type="submit" disabled={isSubmitting || editTx.status !== 'DRAFT'} title={editTx.status === 'DRAFT' ? 'Save draft' : 'Posted transactions are immutable'}>
               Save
             </Button>
@@ -216,7 +225,7 @@ export function TransactionFormModal({ open, onClose, onError, editTx }: Props) 
             ) : null}
           </div>
         ) : (
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="d-flex justify-content-end gap-2 pt-1">
             <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Saving…' : 'Add transaction'}

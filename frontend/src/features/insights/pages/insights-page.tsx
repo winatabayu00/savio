@@ -20,9 +20,11 @@ function monthBounds(): { from: string; to: string } {
 
 function FactCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <div className="text-sm text-gray-500">{label}</div>
-      <div className="mt-1 text-xl font-semibold text-gray-900">{value}</div>
+    <div className="card h-100">
+      <div className="card-body">
+        <div className="fs-13 text-muted">{label}</div>
+        <div className="mt-1 fs-16 fw-semibold text-dark">{value}</div>
+      </div>
     </div>
   );
 }
@@ -43,13 +45,13 @@ export function InsightsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">AI Insights</h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <h1 className="fs-20 fw-bolder mb-0">AI Insights</h1>
+      <p className="fs-13 text-muted mb-0 mt-1">
         Explained from real, deterministic numbers. The facts come first; AI only interprets them.
       </p>
 
       {dismissed ? (
-        <div className="mt-6">
+        <div className="mt-4">
           <EmptyState
             title="Insight dismissed"
             description="Your cashflow facts below never depend on AI availability."
@@ -58,42 +60,48 @@ export function InsightsPage() {
         </div>
       ) : (
         <>
-          {isLoading ? <p className="mt-6 text-sm text-gray-500">Summarizing your month…</p> : null}
+          {isLoading ? <p className="mt-4 fs-13 text-muted">Summarizing your month…</p> : null}
           {isError && !aiUnavailable ? (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div className="mt-4 alert alert-danger">
               <p>We could not generate this insight.</p>
               <Button variant="secondary" className="mt-2" onClick={() => void refetch()}>Try again</Button>
             </div>
           ) : null}
           {aiUnavailable ? (
-            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="mt-4 alert alert-warning">
               AI is unavailable right now. Your financial facts and features still work — the explanatory
               narrative is temporarily offline.
             </div>
           ) : null}
 
           {cash ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <FactCard label="Income this month" value={formatAmountString(cash.income, currency)} />
-              <FactCard label="Expenses this month" value={formatAmountString(cash.expense, currency)} />
-              <FactCard label="Net cashflow" value={formatAmountString(cash.net, currency)} />
+            <div className="row g-4 mt-4">
+              <div className="col-12 col-md-4">
+                <FactCard label="Income this month" value={formatAmountString(cash.income, currency)} />
+              </div>
+              <div className="col-12 col-md-4">
+                <FactCard label="Expenses this month" value={formatAmountString(cash.expense, currency)} />
+              </div>
+              <div className="col-12 col-md-4">
+                <FactCard label="Net cashflow" value={formatAmountString(cash.net, currency)} />
+              </div>
             </div>
           ) : null}
 
           {insight ? (
-            <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6">
-              <div className="flex items-start justify-between">
-                <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
+            <div className="card card-body mt-4">
+              <div className="d-flex align-items-start justify-content-between">
+                <span className="badge bg-soft-primary text-primary">
                   AI-generated · verify against your facts
                 </span>
                 <Button variant="ghost" onClick={() => setDismissed(true)}>Dismiss</Button>
               </div>
-              <h2 className="mt-4 text-xl font-semibold text-gray-900">{insight.headline}</h2>
-              <p className="mt-2 text-sm text-gray-600">{insight.detail}</p>
+              <h2 className="mt-4 fs-16 fw-semibold text-dark">{insight.headline}</h2>
+              <p className="mt-2 fs-13 text-secondary">{insight.detail}</p>
               {insight.related_facts.length > 0 ? (
-                <div className="mt-5 border-t border-gray-100 pt-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Supporting facts</h3>
-                  <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-600">
+                <div className="mt-4 border-top pt-4">
+                  <h3 className="fs-12 text-uppercase fw-semibold text-muted mb-3">Supporting facts</h3>
+                  <ul className="mt-2 d-flex flex-column gap-1 fs-13 text-secondary">
                     {insight.related_facts.map((f, i) => (
                       <li key={i}>{f}</li>
                     ))}
@@ -104,8 +112,8 @@ export function InsightsPage() {
           ) : null}
 
           {!isError && !insight ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
-              <p className="mx-auto max-w-md text-sm text-gray-500">
+            <div className="card card-body mt-4 p-5 text-center">
+              <p className="mx-auto fs-13 text-muted">
                 Insights need cashflow data. Add income and expenses, then revisit this page.
               </p>
             </div>
