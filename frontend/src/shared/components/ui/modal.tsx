@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   open: boolean;
@@ -24,7 +25,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
   }, [open, onClose]);
 
   if (!open) return null;
-  return (
+  return createPortal(
     <div
       className="modal fade show d-block"
       tabIndex={-1}
@@ -42,6 +43,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
           <div className="modal-body">{children}</div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
