@@ -45,8 +45,8 @@ cd savio
 Open [http://localhost:5173](http://localhost:5173).
 
 ```text
-Email:    demo@savio.test
-Password: DemoPassword!23
+Email:    user@user.com
+Password: password
 ```
 
 The script creates `.env`, starts PostgreSQL and Redis, applies migrations, seeds demo data, then runs the API and frontend. See the [local development guide](docs/engineering/local-development.md) for manual installation, environment configuration, migrations, individual services, testing, and troubleshooting commands.

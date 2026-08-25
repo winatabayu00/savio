@@ -5155,8 +5155,8 @@ Testing hardening:
 Runtime verification (go run ./cmd/api against dev DB + demo seed):
   login -> 200; /dashboard, /forecast, /analytics, /goals, /budgets,
   /recurring-transactions, /ai/status, /ai/copilot (calculate_scenario) all
-  return 200 with data. make seed-demo ready (demo@savio.test /
-  DemoPassword!23).
+   return 200 with data. make seed-demo ready (user@user.com /
+   password).
 ```
 
 # 44. Milestone M23 — Performance & Observability

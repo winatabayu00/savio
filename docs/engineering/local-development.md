@@ -29,8 +29,8 @@ The script:
 Open [http://localhost:5173](http://localhost:5173).
 
 ```text
-Email:    demo@savio.test
-Password: DemoPassword!23
+Email:    user@user.com
+Password: password
 ```
 
 API logs are written to `/tmp/savio-api.log`; frontend logs to `/tmp/savio-web.log`. Press `Ctrl-C` to stop the application processes.
