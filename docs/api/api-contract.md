@@ -3182,8 +3182,9 @@ Authentication: authenticated. Authorization: workspace OWNER. (CSRF protected,
 like all `/api/v1` mutations.)
 
 Registers (or removes, when `webhook_url` is empty) the bot webhook with Telegram.
-The endpoint URL is built here: `<webhook_url>/telegram/webhook/<random-secret>`.
-When a webhook is registered the worker stops long-polling.
+The endpoint URL is built here:
+`<webhook_url>/api/v1/telegram/webhook/<random-secret>`. When a webhook is
+registered the worker stops long-polling.
 
 Request:
 

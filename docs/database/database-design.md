@@ -345,19 +345,23 @@ audit_logs
 
 # 9a. Telegram Recap Storage
 
-`telegram_settings` is a singleton row (id = 1) binding one bot to the workspace
-of the OWNER who configured it:
+`telegram_settings` is keyed by `workspace_id` (PRIMARY KEY): every workspace
+configures and owns its own bot row, so one workspace never blocks another:
 
 - `enabled` — master switch; when off the worker skips polling entirely.
 - `bot_token` — Telegram Bot API token (never returned unmasked by the API).
 - `chat_id` — authorized chat; messages from any other chat are ignored.
 - `workspace_id` → `workspaces(id)` — the workspace recap expenses are written to.
 - `last_update_id` — best-effort Telegram long-poll offset.
+- `webhook_url` / `webhook_secret` — optional push mode (registered webhook URL
+  + the random path/header secret guarding the unauthenticated endpoint).
 
-`telegram_processed.update_id` is a PRIMARY KEY that guards long-poll exactly-once:
-an update is claimed (INSERT ... ON CONFLICT DO NOTHING) before being handled, so
-a worker crash between transaction creation and offset ack can never duplicate a
-transaction (AGENTS #105).
+`telegram_processed` has a PRIMARY KEY `(workspace_id, update_id)` that guards
+long-poll exactly-once per bot: an update is claimed
+(INSERT ... ON CONFLICT DO NOTHING) before being handled, so a worker crash
+between transaction creation and offset ack can never duplicate a transaction
+(AGENTS #105). `update_id` is only unique per bot, which is why the composition
+includes the workspace.
 
 Recap writes go through the shared `transactions.Service` (AGENTS #102) as
 POSTED expenses with `source = 'TELEGRAM'`.
