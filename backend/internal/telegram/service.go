@@ -30,45 +30,49 @@ func NewService(db *gorm.DB, aiSvc *ai.Service, txSvc *transactions.Service) *Se
 	return &Service{db: db, ai: aiSvc, tx: txSvc}
 }
 
-// Poll fetches pending updates once via long-poll. The worker calls it in a
-// tight loop. It is exactly-once per update (telegram_processed unique guard),
-// even though multiple worker replicas could poll concurrently. Webhook mode
-// (config.webhook_url set) replaces polling entirely.
+// Poll fetches pending updates once via long-poll for every enabled workspace
+// bot. The worker calls it in a tight loop. It is exactly-once per update per
+// workspace (telegram_processed unique guard), even though multiple worker
+// replicas could poll concurrently. Webhook mode (config.webhook_url set)
+// replaces polling entirely.
 func (s *Service) Poll(ctx context.Context) error {
-	st, err := s.load(ctx)
-	if err != nil {
+	var settings []Settings
+	if err := s.db.WithContext(ctx).Where("enabled = TRUE AND bot_token <> '' AND webhook_url = ''").
+		Find(&settings).Error; err != nil {
 		return err
 	}
-	if !st.Enabled || st.BotToken == "" || st.WebhookURL != "" {
-		return nil
-	}
-	client := newBotClient(st.BotToken)
-	ups, err := client.updates(ctx, st.LastUpdateID+1)
-	if err != nil {
-		return err
-	}
-	if len(ups) == 0 {
-		return nil
-	}
-	maxID := st.LastUpdateID
-	for i := range ups {
-		u := ups[i]
-		if u.ID <= st.LastUpdateID {
+	for i := range settings {
+		st := settings[i]
+		client := newBotClient(st.BotToken)
+		ups, err := client.updates(ctx, st.LastUpdateID+1)
+		if err != nil {
+			slog.Error("telegram poll", "error", err.Error(), "workspace_id", st.WorkspaceID)
 			continue
 		}
-		if u.ID > maxID {
-			maxID = u.ID
+		if len(ups) == 0 {
+			continue
 		}
-		if !s.claim(ctx, u.ID) {
-			continue // already handled by another tick
+		maxID := st.LastUpdateID
+		for j := range ups {
+			u := ups[j]
+			if u.ID <= st.LastUpdateID {
+				continue
+			}
+			if u.ID > maxID {
+				maxID = u.ID
+			}
+			if !s.claim(ctx, st.WorkspaceID, u.ID) {
+				continue // already handled by another tick
+			}
+			if err := s.Handle(ctx, &st, u, client); err != nil {
+				slog.Error("telegram handler", "error", err.Error(), "update_id", u.ID, "workspace_id", st.WorkspaceID)
+			}
 		}
-		if err := s.Handle(ctx, st, u, client); err != nil {
-			slog.Error("telegram handler", "error", err.Error(), "update_id", u.ID)
-		}
-	}
-	if maxID != st.LastUpdateID {
-		if err := s.db.WithContext(ctx).Model(&Settings{ID: 1}).Update("last_update_id", maxID).Error; err != nil {
-			slog.Error("telegram offset", "error", err.Error())
+		if maxID != st.LastUpdateID {
+			if err := s.db.WithContext(ctx).Model(&Settings{WorkspaceID: st.WorkspaceID}).
+				Update("last_update_id", maxID).Error; err != nil {
+				slog.Error("telegram offset", "error", err.Error())
+			}
 		}
 	}
 	return nil
@@ -87,12 +91,12 @@ func (s *Service) Handle(ctx context.Context, st *Settings, u Update, client *bo
 	return s.handle(ctx, st, u, client)
 }
 
-// claim inserts the update id with a unique constraint so a crash between "new
-// update" and "offset ack" cannot duplicate a transaction. Returns false when
-// the id was already claimed.
-func (s *Service) claim(ctx context.Context, id int64) bool {
+// claim inserts the (workspace, update id) pair with a unique constraint so a
+// crash between "new update" and "offset ack" cannot duplicate a transaction.
+// Returns false when the id was already claimed.
+func (s *Service) claim(ctx context.Context, workspaceID uuid.UUID, id int64) bool {
 	res := s.db.WithContext(ctx).Exec(
-		`INSERT INTO telegram_processed (update_id) VALUES (?) ON CONFLICT (update_id) DO NOTHING`, id)
+		`INSERT INTO telegram_processed (workspace_id, update_id) VALUES (?, ?) ON CONFLICT (workspace_id, update_id) DO NOTHING`, workspaceID, id)
 	return res.Error == nil && res.RowsAffected == 1
 }
 

@@ -156,12 +156,13 @@ func (h *Handler) RegisterWebhook(c *gin.Context) {
 // exactly-once even if Telegram retries.
 func (h *Handler) HandleWebhook(c *gin.Context) {
 	ctx := c.Request.Context()
-	st, err := h.svc.load(ctx)
+	secret := c.Param("secret")
+	st, err := h.svc.byWebhookSecret(ctx, secret)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"ok": false})
+		c.JSON(http.StatusUnauthorized, gin.H{"ok": false})
 		return
 	}
-	if !validWebhookSecret(st.WebhookSecret, c.Param("secret"), c.GetHeader("X-Telegram-Bot-Api-Secret-Token")) {
+	if !validWebhookSecret(st.WebhookSecret, secret, c.GetHeader("X-Telegram-Bot-Api-Secret-Token")) {
 		c.JSON(http.StatusUnauthorized, gin.H{"ok": false})
 		return
 	}
@@ -170,7 +171,7 @@ func (h *Handler) HandleWebhook(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 		return
 	}
-	if !h.svc.claim(ctx, u.ID) {
+	if !h.svc.claim(ctx, st.WorkspaceID, u.ID) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 		return
 	}
