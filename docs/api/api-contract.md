@@ -5725,3 +5725,19 @@ role checks are backend-enforced via RequireOwner middleware and service invaria
 member lookups are workspace-scoped (memberId alone is never authorization)
 last-owner removal/demotion is serialized with row locks (INV-003)
 ```
+
+## GET /api/v1/audit-logs
+
+OWNER only. Returns append-only, workspace-scoped history for crucial mutations.
+
+Each record includes `actor_user_id`, `actor_name`, `actor_type` (`USER`, `AI`,
+or `SYSTEM`), action, resource, optional reason, and before/after snapshots.
+`AI` attribution is derived server-side from the trusted mutation source; clients
+cannot select an actor type.
+
+Responses:
+
+```text
+200  paginated audit records
+403  requester is not OWNER
+```

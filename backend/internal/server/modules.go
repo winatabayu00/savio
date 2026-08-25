@@ -6,6 +6,7 @@ import (
 	"github.com/savio/savio/backend/internal/accounts"
 	ai2 "github.com/savio/savio/backend/internal/ai"
 	"github.com/savio/savio/backend/internal/analytics"
+	"github.com/savio/savio/backend/internal/audit"
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/budgets"
 	"github.com/savio/savio/backend/internal/categories"
@@ -40,6 +41,14 @@ func registerModules(a *App) {
 	registerScenarioRoutes(api, a)
 	registerAIRoutes(api, a)
 	registerTelegramRoutes(api, a)
+	registerAuditRoutes(api, a)
+}
+
+func registerAuditRoutes(api *gin.RouterGroup, a *App) {
+	h := audit.NewHandler(audit.NewRepository(a.DB))
+	g := api.Group("/audit-logs")
+	g.Use(auth.AuthRequired(a.DB, a.Config), auth.RequireOwner())
+	audit.RegisterRoutes(g, h)
 }
 
 func registerTransactionRoutes(api *gin.RouterGroup, a *App) {

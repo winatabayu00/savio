@@ -155,10 +155,7 @@ func (s *Service) create(ctx context.Context, dbIn *gorm.DB, workspaceID, userID
 	if err := q.WithContext(ctx).Create(t).Error; err != nil {
 		return nil, err
 	}
-	s.audit.Record(ctx, &workspaceID, &userID, "transaction.create", "transaction", &t.ID, map[string]any{
-		"type":   t.Type,
-		"status": t.Status,
-	})
+	s.audit.RecordChange(ctx, &workspaceID, &userID, "transaction.create", "transaction", &t.ID, audit.Change{ActorType: auditActor(t.Source), After: auditSnapshot(t)})
 	return toView(t), nil
 }
 
@@ -181,6 +178,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, userID uuid.UUID, in 
 	if in.AmountMinor <= 0 && in.Type != string(TypeAdjustment) {
 		return nil, errs.ValidationFields(map[string]string{"amount": "Amount must be positive"})
 	}
+	before := auditSnapshot(t)
 	t.Type = in.Type
 	t.Amount = in.AmountMinor
 	t.CategoryID = in.CategoryID
@@ -191,7 +189,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, userID uuid.UUID, in 
 	if err := s.repo.Update(ctx, t); err != nil {
 		return nil, err
 	}
-	s.audit.Record(ctx, &workspaceID, &userID, "transaction.update", "transaction", &t.ID, nil)
+	s.audit.RecordChange(ctx, &workspaceID, &userID, "transaction.update", "transaction", &t.ID, audit.Change{ActorType: auditActor(t.Source), Before: before, After: auditSnapshot(t)})
 	updated, err := s.repo.FindByID(ctx, workspaceID, in.ID)
 	if err != nil {
 		return nil, err
@@ -227,7 +225,7 @@ func (s *Service) Post(ctx context.Context, workspaceID, userID uuid.UUID, id uu
 	if err := s.repo.Post(ctx, workspaceID, id, version, time.Now().UTC()); err != nil {
 		return nil, err
 	}
-	s.audit.Record(ctx, &workspaceID, &userID, "transaction.post", "transaction", &id, nil)
+	s.audit.RecordChange(ctx, &workspaceID, &userID, "transaction.post", "transaction", &id, audit.Change{ActorType: auditActor(t.Source), Before: auditSnapshot(t), After: map[string]any{"status": StatusPosted}})
 	done, err := s.repo.FindByID(ctx, workspaceID, id)
 	if err != nil {
 		return nil, err
@@ -249,7 +247,7 @@ func (s *Service) Void(ctx context.Context, workspaceID, userID uuid.UUID, in *V
 	if err := s.repo.Void(ctx, workspaceID, in.ID, in.Version, in.Reason, userID, time.Now().UTC()); err != nil {
 		return nil, err
 	}
-	s.audit.Record(ctx, &workspaceID, &userID, "transaction.void", "transaction", &t.ID, nil)
+	s.audit.RecordChange(ctx, &workspaceID, &userID, "transaction.void", "transaction", &t.ID, audit.Change{ActorType: auditActor(t.Source), Reason: in.Reason, Before: auditSnapshot(t), After: map[string]any{"status": StatusVoided, "void_reason": in.Reason}})
 	done, err := s.repo.FindByID(ctx, workspaceID, in.ID)
 	if err != nil {
 		return nil, err
@@ -267,6 +265,38 @@ func (s *Service) List(ctx context.Context, workspaceID uuid.UUID, f ListFilter)
 		out = append(out, *toView(&rows[i]))
 	}
 	return out, total, nil
+}
+
+func auditActor(source string) string {
+	if source == string(SourceAI) {
+		return "AI"
+	}
+	if source == string(SourceSystem) || source == string(SourceRecurring) {
+		return "SYSTEM"
+	}
+	return "USER"
+}
+
+func auditSnapshot(t *Transaction) map[string]any {
+	data := map[string]any{
+		"account_id":       t.AccountID,
+		"type":             t.Type,
+		"amount_minor":     t.Amount,
+		"transaction_date": t.TransactionDate.Format("2006-01-02"),
+		"source":           t.Source,
+		"status":           t.Status,
+		"version":          t.Version,
+	}
+	if t.CategoryID != nil {
+		data["category_id"] = *t.CategoryID
+	}
+	if t.Description != nil {
+		data["description"] = *t.Description
+	}
+	if t.Merchant != nil {
+		data["merchant"] = *t.Merchant
+	}
+	return data
 }
 
 func (s *Service) Get(ctx context.Context, workspaceID, id uuid.UUID) (*View, error) {

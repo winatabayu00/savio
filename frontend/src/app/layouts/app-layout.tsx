@@ -60,7 +60,7 @@ export function AppLayout() {
           Savio
         </Link>
         <nav className="flex-1 space-y-5 overflow-y-auto px-3">
-          {NAV.map((group) => (
+          {NAV.concat(auth?.role === 'OWNER' ? [{ label: 'Kontrol', items: [{ to: '/audit-logs', label: 'Audit trail' }] }] : []).map((group) => (
             <div key={group.label}>
               <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
                 {group.label}
