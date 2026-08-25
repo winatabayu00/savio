@@ -67,8 +67,8 @@ func (b *botClient) sendMessage(ctx context.Context, chatID, text string) error 
 	return b.do(ctx, "POST", u, body, &payload)
 }
 
-func (b *botClient) setWebhook(ctx context.Context, webhookURL string) error {
-	u := fmt.Sprintf("%s/bot%s/setWebhook?url=%s", b.rawURL, b.token, url.QueryEscape(webhookURL))
+func (b *botClient) setWebhook(ctx context.Context, webhookURL, secret string) error {
+	u := fmt.Sprintf("%s/bot%s/setWebhook?url=%s&secret_token=%s", b.rawURL, b.token, url.QueryEscape(webhookURL), url.QueryEscape(secret))
 	var payload struct {
 		Ok          bool   `json:"ok"`
 		Description string `json:"description"`

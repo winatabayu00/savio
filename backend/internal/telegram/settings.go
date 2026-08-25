@@ -38,6 +38,19 @@ func (s *Service) load(ctx context.Context) (*Settings, error) {
 	return &st, nil
 }
 
+// settingsForWorkspace prevents one workspace OWNER from reading or taking over
+// the singleton bot configured by another workspace.
+func (s *Service) settingsForWorkspace(ctx context.Context, workspaceID uuid.UUID) (*Settings, error) {
+	st, err := s.load(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if st.WorkspaceID != uuid.Nil && st.WorkspaceID != workspaceID {
+		return nil, errs.PermissionDenied("Telegram is configured for another workspace")
+	}
+	return st, nil
+}
+
 type UpdateInput struct {
 	Enabled  *bool
 	BotToken *string
@@ -48,7 +61,7 @@ type UpdateInput struct {
 // stored token untouched (masked round-trip safety); WorkspaceID is bound to the
 // workspace of the configuring user, never taken from the client.
 func (s *Service) UpdateSettings(ctx context.Context, workspaceID uuid.UUID, in *UpdateInput) (*Settings, error) {
-	st, err := s.load(ctx)
+	st, err := s.settingsForWorkspace(ctx, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -69,9 +82,9 @@ func (s *Service) UpdateSettings(ctx context.Context, workspaceID uuid.UUID, in 
 	return st, nil
 }
 
-// Settings returns the current configuration for the Settings page.
-func (s *Service) Settings(ctx context.Context) (*Settings, error) {
-	return s.load(ctx)
+// Settings returns the current workspace's configuration for the Settings page.
+func (s *Service) Settings(ctx context.Context, workspaceID uuid.UUID) (*Settings, error) {
+	return s.settingsForWorkspace(ctx, workspaceID)
 }
 
 // WebhookPath is the unauthenticated Telegram webhook route suffix mounted
@@ -100,7 +113,7 @@ func generateSecret() string {
 // (typically a tunnel to this API); the real endpoint path is derived here and
 // the secret is generated once and stored.
 func (s *Service) RegisterWebhook(ctx context.Context, workspaceID uuid.UUID, publicURL string) (*Settings, error) {
-	st, err := s.load(ctx)
+	st, err := s.settingsForWorkspace(ctx, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +141,7 @@ func (s *Service) RegisterWebhook(ctx context.Context, workspaceID uuid.UUID, pu
 		st.WebhookSecret = generateSecret()
 	}
 	full := strings.TrimRight(u.String(), "/") + "/telegram/webhook/" + st.WebhookSecret
-	if err := client.setWebhook(ctx, full); err != nil {
+	if err := client.setWebhook(ctx, full, st.WebhookSecret); err != nil {
 		return nil, errs.WrapInternal(err, "register telegram webhook")
 	}
 	st.WebhookURL = strings.TrimRight(u.String(), "/")

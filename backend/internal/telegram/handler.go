@@ -43,12 +43,17 @@ func toConfigResponse(st *Settings) configResponse {
 		BotTokenMask: maskToken(st.BotToken),
 		ChatID:       st.ChatID,
 		WorkspaceID:  st.WorkspaceID.String(),
-		WebhookURL:   st.fullWebhookURL(),
+		WebhookURL:   st.WebhookURL,
 	}
 }
 
 func (h *Handler) GetConfig(c *gin.Context) {
-	st, err := h.svc.Settings(c.Request.Context())
+	x, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	st, err := h.svc.Settings(c.Request.Context(), x.WorkspaceID)
 	if err != nil {
 		httpx.Fail(c, err)
 		return
@@ -146,9 +151,9 @@ func (h *Handler) RegisterWebhook(c *gin.Context) {
 }
 
 // HandleWebhook receives Telegram push updates (no session, no CSRF). The
-// secret in the URL path guards the route; the configured chat_id still
-// authorizes every message, and the telegram_processed constraint keeps exactly-
-// once even if Telegram retries.
+// URL and Telegram's secret-token header guard the route; the configured chat_id
+// still authorizes every message, and the telegram_processed constraint keeps
+// exactly-once even if Telegram retries.
 func (h *Handler) HandleWebhook(c *gin.Context) {
 	ctx := c.Request.Context()
 	st, err := h.svc.load(ctx)
@@ -156,7 +161,7 @@ func (h *Handler) HandleWebhook(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"ok": false})
 		return
 	}
-	if st.WebhookSecret == "" || subtle.ConstantTimeCompare([]byte(st.WebhookSecret), []byte(c.Param("secret"))) != 1 {
+	if !validWebhookSecret(st.WebhookSecret, c.Param("secret"), c.GetHeader("X-Telegram-Bot-Api-Secret-Token")) {
 		c.JSON(http.StatusUnauthorized, gin.H{"ok": false})
 		return
 	}
@@ -174,4 +179,10 @@ func (h *Handler) HandleWebhook(c *gin.Context) {
 		_ = client.sendMessage(ctx, st.ChatID, "Gagal memproses pesan, coba lagi.")
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func validWebhookSecret(expected, pathSecret, headerSecret string) bool {
+	return expected != "" &&
+		subtle.ConstantTimeCompare([]byte(expected), []byte(pathSecret)) == 1 &&
+		subtle.ConstantTimeCompare([]byte(expected), []byte(headerSecret)) == 1
 }
