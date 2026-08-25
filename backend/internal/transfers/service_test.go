@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 		dsn := v
 		testURL, err := url.Parse(dsn)
 		if err == nil {
-			testURL.Path = "/savio_test"
+			testURL.Path = "/savio_test_transfers"
 			ensureTestDB(dsn, testURL.String())
 			os.Setenv("DATABASE_URL", testURL.String())
 		}
@@ -64,7 +64,7 @@ func ensureTestDB(adminDSN, testDSN string) {
 		return
 	}
 	defer db.Close()
-	_, _ = db.Exec(`CREATE DATABASE savio_test`)
+	_, _ = db.Exec(`CREATE DATABASE savio_test_transfers`)
 	if err := migrateTestDB(testDSN); err != nil {
 		panic(err)
 	}
