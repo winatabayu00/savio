@@ -142,6 +142,11 @@ func registerAuthRoutes(api *gin.RouterGroup, a *App) {
 	g.POST("/logout-all", authed, h.LogoutAll)
 	g.GET("/me", authed, h.Me)
 
+	stg := api.Group("/settings")
+	stg.Use(authed)
+	stg.GET("", h.MeSettings)
+	stg.PATCH("", h.UpdateSettings)
+
 	sg := api.Group("/sessions")
 	sg.Use(authed)
 	sg.GET("", h.ListSessions)

@@ -18,6 +18,7 @@ import { ForecastPage } from '@/features/forecast/pages/forecast-page';
 import { ScenariosPage } from '@/features/scenarios/pages/scenarios-page';
 import { InsightsPage } from '@/features/insights/pages/insights-page';
 import { CopilotPage } from '@/features/copilot/pages/copilot-page';
+import { SettingsPage } from '@/features/settings/pages/settings-page';
 
 export const router = createBrowserRouter([
   {
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
       { path: '/scenarios', element: <ScenariosPage /> },
       { path: '/insights', element: <InsightsPage /> },
       { path: '/copilot', element: <CopilotPage /> },
+      { path: '/settings', element: <SettingsPage /> },
     ],
   },
   { path: '/', element: <Navigate to="/dashboard" replace /> },

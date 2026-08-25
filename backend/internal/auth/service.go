@@ -301,6 +301,57 @@ func (s *Service) Settings(ctx context.Context, userID uuid.UUID) (*users.UserSe
 	return s.users.GetSettings(ctx, userID)
 }
 
+// UpdateSettingsInput carries optional preference updates; nil means "unchanged".
+type UpdateSettingsInput struct {
+	AIInsightsEnabled      *bool
+	AICopilotEnabled       *bool
+	NotificationsEnabled   *bool
+	BudgetWarningThreshold *float64
+	LowBalanceThreshold    *int64
+}
+
+func (s *Service) UpdateSettings(ctx context.Context, userID uuid.UUID, in *UpdateSettingsInput) (*users.UserSettings, error) {
+	cur, err := s.users.GetSettings(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	validation := map[string]string{}
+	if v := in.AIInsightsEnabled; v != nil {
+		cur.AIInsightsEnabled = *v
+	}
+	if v := in.AICopilotEnabled; v != nil {
+		cur.AICopilotEnabled = *v
+	}
+	if v := in.NotificationsEnabled; v != nil {
+		cur.NotificationsEnabled = *v
+	}
+	if v := in.BudgetWarningThreshold; v != nil {
+		if *v < 0 || *v > 100 {
+			validation["budget_warning_threshold"] = "must be between 0 and 100"
+		} else {
+			cur.BudgetWarningThreshold = *v
+		}
+	}
+	if v := in.LowBalanceThreshold; v != nil {
+		if *v < 0 {
+			validation["low_balance_threshold"] = "must not be negative"
+		} else {
+			cur.LowBalanceThreshold = v
+		}
+	}
+	if len(validation) > 0 {
+		return nil, errs.ValidationFields(validation)
+	}
+	if err := s.users.UpdateSettings(ctx, cur); err != nil {
+		return nil, err
+	}
+	cur, err = s.users.GetSettings(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return cur, nil
+}
+
 func (s *Service) CountActiveSessions(ctx context.Context, userID uuid.UUID) (int64, error) {
 	return s.sessions.CountActive(ctx, userID)
 }

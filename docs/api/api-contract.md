@@ -975,15 +975,19 @@ Response:
     "ai_insights_enabled": true,
     "ai_copilot_enabled": true,
     "notifications_enabled": true,
-    "budget_warning_threshold": "80.00",
-    "low_balance_threshold": "1000000.00"
+    "budget_warning_threshold": 80,
+    "low_balance_threshold": 1000000
   }
 }
 ```
 
+`budget_warning_threshold` is a percentage (0–100). `low_balance_threshold` is a non-negative integer in minor units, or `null` when unset.
+
 ---
 
 # 34. Update Settings
+
+PATCH accepts a partial subset of the settings fields (any fields omitted are unchanged). Validation is enforced server-side; invalid values return `422 VALIDATION_ERROR` with `error.details`.
 
 ```http
 PATCH /api/v1/settings
@@ -995,8 +999,8 @@ Request:
 {
   "ai_insights_enabled": true,
   "notifications_enabled": true,
-  "budget_warning_threshold": "85.00",
-  "low_balance_threshold": "1500000.00"
+  "budget_warning_threshold": 85,
+  "low_balance_threshold": 1500000
 }
 ```
 
@@ -1007,9 +1011,10 @@ Response:
   "success": true,
   "data": {
     "ai_insights_enabled": true,
+    "ai_copilot_enabled": true,
     "notifications_enabled": true,
-    "budget_warning_threshold": "85.00",
-    "low_balance_threshold": "1500000.00"
+    "budget_warning_threshold": 85,
+    "low_balance_threshold": 1500000
   }
 }
 ```

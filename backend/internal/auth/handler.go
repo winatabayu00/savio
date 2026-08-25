@@ -83,6 +83,53 @@ func toSettingsResponse(s *users.UserSettings) *settingsResponse {
 	}
 }
 
+type updateSettingsReq struct {
+	AIInsightsEnabled      *bool    `json:"ai_insights_enabled"`
+	AICopilotEnabled       *bool    `json:"ai_copilot_enabled"`
+	NotificationsEnabled   *bool    `json:"notifications_enabled"`
+	BudgetWarningThreshold *float64 `json:"budget_warning_threshold"`
+	LowBalanceThreshold    *int64   `json:"low_balance_threshold"`
+}
+
+func (h *Handler) MeSettings(c *gin.Context) {
+	ctx, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	settings, err := h.svc.Settings(c.Request.Context(), ctx.UserID)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, toSettingsResponse(settings))
+}
+
+func (h *Handler) UpdateSettings(c *gin.Context) {
+	ctx, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	var req updateSettingsReq
+	if err := httpx.Bind(c, &req); err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	settings, err := h.svc.UpdateSettings(c.Request.Context(), ctx.UserID, &UpdateSettingsInput{
+		AIInsightsEnabled:      req.AIInsightsEnabled,
+		AICopilotEnabled:       req.AICopilotEnabled,
+		NotificationsEnabled:   req.NotificationsEnabled,
+		BudgetWarningThreshold: req.BudgetWarningThreshold,
+		LowBalanceThreshold:    req.LowBalanceThreshold,
+	})
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, toSettingsResponse(settings))
+}
+
 func (h *Handler) GetCSRF(c *gin.Context) {
 	token, err := csrf.Generate(h.cfg.CSRFSecret)
 	if err != nil {

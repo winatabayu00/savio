@@ -2,19 +2,46 @@ import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/providers/auth-provider';
 
 const NAV = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/accounts', label: 'Accounts' },
-  { to: '/transactions', label: 'Transactions' },
-  { to: '/transfers', label: 'Transfers' },
-  { to: '/recurring', label: 'Recurring' },
-  { to: '/analytics', label: 'Analytics' },
-  { to: '/budgets', label: 'Budgets' },
-  { to: '/goals', label: 'Goals' },
-  { to: '/forecast', label: 'Forecast' },
-  { to: '/scenarios', label: 'Scenarios' },
-  { to: '/insights', label: 'Insights' },
-  { to: '/copilot', label: 'Copilot' },
-  { to: '/categories', label: 'Categories' },
+  {
+    label: 'Ringkasan',
+    items: [{ to: '/dashboard', label: 'Dashboard' }],
+  },
+  {
+    label: 'Keuangan',
+    items: [
+      { to: '/accounts', label: 'Accounts' },
+      { to: '/transactions', label: 'Transactions' },
+      { to: '/transfers', label: 'Transfers' },
+      { to: '/recurring', label: 'Recurring' },
+      { to: '/categories', label: 'Categories' },
+    ],
+  },
+  {
+    label: 'Analisis & Perencanaan',
+    items: [
+      { to: '/analytics', label: 'Analytics' },
+      { to: '/budgets', label: 'Budgets' },
+      { to: '/goals', label: 'Goals' },
+    ],
+  },
+  {
+    label: 'Proyeksi',
+    items: [
+      { to: '/forecast', label: 'Forecast' },
+      { to: '/scenarios', label: 'Scenarios' },
+    ],
+  },
+  {
+    label: 'AI',
+    items: [
+      { to: '/insights', label: 'Insights' },
+      { to: '/copilot', label: 'Copilot' },
+    ],
+  },
+  {
+    label: 'Pengaturan',
+    items: [{ to: '/settings', label: 'Pengaturan' }],
+  },
 ];
 
 export function AppLayout() {
@@ -32,15 +59,24 @@ export function AppLayout() {
         <Link to="/dashboard" className="px-6 py-5 text-xl font-semibold text-brand">
           Savio
         </Link>
-        <nav className="flex-1 space-y-1 px-3">
-          {NAV.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-            >
-              {item.label}
-            </Link>
+        <nav className="flex-1 space-y-5 overflow-y-auto px-3">
+          {NAV.map((group) => (
+            <div key={group.label}>
+              <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                {group.label}
+              </div>
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
         <div className="border-t border-gray-200 p-4">

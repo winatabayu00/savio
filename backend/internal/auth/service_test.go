@@ -231,6 +231,40 @@ func TestDuplicateEmailRejected(t *testing.T) {
 	}
 }
 
+// TestUpdateSettings verifies partial preference updates persist and invalid
+// values are rejected.
+func TestUpdateSettings(t *testing.T) {
+	svc, db := testService(t)
+	ctx := context.Background()
+	email := randEmail()
+	reg, err := svc.Register(ctx, "Settings User", email, "strong-password-5", "agent", "127.0.0.1")
+	mustNil(t, err)
+	cleanupUser(t, db, reg.UserID)
+
+	threshold := 85.0
+	low := int64(5000000)
+	enabled := false
+	upd, err := svc.UpdateSettings(ctx, reg.UserID, &UpdateSettingsInput{
+		AIInsightsEnabled:      &enabled,
+		BudgetWarningThreshold: &threshold,
+		LowBalanceThreshold:    &low,
+	})
+	mustNil(t, err)
+	if upd.AIInsightsEnabled || upd.BudgetWarningThreshold != 85 || upd.LowBalanceThreshold == nil || *upd.LowBalanceThreshold != 5000000 {
+		t.Fatalf("settings not applied: %+v", upd)
+	}
+
+	bad := 150.0
+	if _, err := svc.UpdateSettings(ctx, reg.UserID, &UpdateSettingsInput{BudgetWarningThreshold: &bad}); errCode(err) != errs.CodeValidationError {
+		t.Fatalf("expected validation error, got %v", err)
+	}
+
+	neg := int64(-1)
+	if _, err := svc.UpdateSettings(ctx, reg.UserID, &UpdateSettingsInput{LowBalanceThreshold: &neg}); errCode(err) != errs.CodeValidationError {
+		t.Fatalf("expected validation error for negative, got %v", err)
+	}
+}
+
 // TestCSRFValidate exercises signed double-submit validation invariants.
 func TestCSRFValidate(t *testing.T) {
 	secret := "csrf-test-secret"
