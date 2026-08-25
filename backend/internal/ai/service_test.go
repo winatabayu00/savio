@@ -320,6 +320,9 @@ func TestCopilotPromptInjectionIsBounded(t *testing.T) {
 			t.Fatalf("forbidden tool surfaced: %+v", res.Facts)
 		}
 	}
+	if res.Facts == nil || res.Actions == nil || res.Sources == nil {
+		t.Fatalf("fact/action arrays must not be null: facts=%v actions=%v sources=%v", res.Facts, res.Actions, res.Sources)
+	}
 }
 
 func TestCopilotCrossWorkspaceIsolation(t *testing.T) {

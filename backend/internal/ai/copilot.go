@@ -86,6 +86,17 @@ func (s *Service) Copilot(ctx context.Context, workspaceID uuid.UUID, question s
 		Actions:       actions,
 		Clarification: clarification,
 	}
+	// Null slices would marshal to JSON null and crash clients that expect []
+	// (AGENTS #90 API success shape). Normalize to empty arrays.
+	if res.Facts == nil {
+		res.Facts = []Fact{}
+	}
+	if res.Sources == nil {
+		res.Sources = []string{}
+	}
+	if res.Actions == nil {
+		res.Actions = []string{}
+	}
 	return res, nil
 }
 
