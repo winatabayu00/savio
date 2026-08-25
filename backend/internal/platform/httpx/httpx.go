@@ -38,7 +38,7 @@ func Collection(c *gin.Context, data any, page, limit, total int) {
 	})
 }
 
-// Fail renders the standard error envelope. Internal causes stay in structured logs.
+// Fail renders the standard error envelope. Internal causes stay in logs in production.
 func Fail(c *gin.Context, err error) {
 	appErr := errs.From(err)
 	if appErr.Cause != nil {
@@ -50,6 +50,16 @@ func Fail(c *gin.Context, err error) {
 			"code", appErr.Code,
 			"error", appErr.Cause.Error())
 	}
+	trace := gin.H{
+		"trace_id": c.GetString(requestIDKey),
+		"endpoint": c.Request.URL.Path,
+		"method":   c.Request.Method,
+		"status":   appErr.Status,
+		"code":     appErr.Code,
+	}
+	if enabled, _ := c.Get("error_details"); enabled == true && appErr.Cause != nil {
+		trace["reason"] = appErr.Cause.Error()
+	}
 	c.JSON(appErr.Status, gin.H{
 		"success": false,
 		"error": gin.H{
@@ -58,6 +68,7 @@ func Fail(c *gin.Context, err error) {
 		},
 		"message":    appErr.Message,
 		"request_id": c.GetString(requestIDKey),
+		"trace":      trace,
 	})
 }
 

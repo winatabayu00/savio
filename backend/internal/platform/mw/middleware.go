@@ -15,6 +15,15 @@ import (
 )
 
 const RequestIDKey = "request_id"
+const ErrorDetailsKey = "error_details"
+
+// ErrorDetails enables diagnostic causes only outside production.
+func ErrorDetails(enabled bool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set(ErrorDetailsKey, enabled)
+		c.Next()
+	}
+}
 
 func newRequestID() string {
 	b := make([]byte, 8)
