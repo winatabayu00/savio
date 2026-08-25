@@ -56,7 +56,7 @@ The script creates `.env`, starts PostgreSQL and Redis, applies migrations, seed
 | Area | Technology |
 | --- | --- |
 | Backend | Go, Gin, GORM, PostgreSQL |
-| Frontend | React, TypeScript, Vite, Tailwind CSS, Axios |
+| Frontend | React, TypeScript, Vite, Duralux SCSS (Bootstrap UI), Axios |
 | State and forms | TanStack Query, React Hook Form, Zod |
 | Infrastructure | Docker Compose, Redis, MinIO, Asynq |
 | Testing | Go testing, Testify, Vitest, React Testing Library, MSW |
@@ -97,7 +97,7 @@ This repository implements the [full assignment specification](docs/assignment/t
 | --- | --- | --- |
 | Product and business flow | Connected personal-finance journey beyond CRUD | [Product foundation](docs/product/product-foundation.md) |
 | Go REST API | Gin, GORM, PostgreSQL, `/api/v1` | [System architecture](docs/architecture/system-architecture.md) |
-| React frontend | TypeScript, Tailwind CSS, Axios | [Frontend architecture](docs/architecture/frontend-architecture.md) |
+| React frontend | TypeScript, Duralux SCSS (Bootstrap UI), Axios | [Frontend architecture](docs/architecture/frontend-architecture.md) |
 | Authentication and security | HttpOnly cookies, CSRF, expiry, refresh rotation | [Security](docs/engineering/security.md) |
 | Authorization | Backend-enforced `OWNER`, `MEMBER`, `VIEWER` roles | [Business requirements](docs/product/business-requirements.md) |
 | Database and migrations | Explicit up/down migrations, constraints, indexes | [Database design](docs/database/database-design.md) |

@@ -69,7 +69,7 @@ Recommended frontend stack:
 React
 TypeScript
 Vite
-Tailwind CSS
+Duralux SCSS (vendored Bootstrap UI theme)
 React Router
 Axios
 TanStack Query
@@ -89,11 +89,10 @@ Playwright
 Optional supporting libraries:
 
 ```text
-Lucide React
+react-icons
 date-fns
 Recharts
 clsx
-tailwind-merge
 ```
 
 The exact chart library may change during implementation, but the frontend architecture should remain independent from a specific chart library.
