@@ -61,8 +61,8 @@ type authResponse struct {
 type workspaceResponse struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
-	BaseCurrency string `json:"base_currency"`
-	Timezone     string `json:"timezone"`
+	BaseCurrency string `json:"base_currency,omitempty"`
+	Timezone     string `json:"timezone,omitempty"`
 }
 
 type settingsResponse struct {
