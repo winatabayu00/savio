@@ -8,11 +8,12 @@ import (
 	"github.com/savio/savio/backend/internal/analytics"
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/budgets"
+	"github.com/savio/savio/backend/internal/categories"
 	"github.com/savio/savio/backend/internal/forecast"
 	"github.com/savio/savio/backend/internal/goals"
-	"github.com/savio/savio/backend/internal/categories"
 	"github.com/savio/savio/backend/internal/recurring"
 	"github.com/savio/savio/backend/internal/scenarios"
+	tg "github.com/savio/savio/backend/internal/telegram"
 	"github.com/savio/savio/backend/internal/transactions"
 	"github.com/savio/savio/backend/internal/transfers"
 	"github.com/savio/savio/backend/internal/workspaces"
@@ -38,6 +39,7 @@ func registerModules(a *App) {
 	registerForecastRoutes(api, a)
 	registerScenarioRoutes(api, a)
 	registerAIRoutes(api, a)
+	registerTelegramRoutes(api, a)
 }
 
 func registerTransactionRoutes(api *gin.RouterGroup, a *App) {
@@ -74,6 +76,16 @@ func registerAIRoutes(api *gin.RouterGroup, a *App) {
 	g.Use(auth.AuthRequired(a.DB, a.Config))
 	ai2.RegisterRoutes(g, h)
 	// Runtime AI configuration lives on the Settings page and is owner-gated.
+	cfg := g.Group("/config")
+	cfg.Use(auth.RequireOwner())
+	cfg.GET("", h.GetConfig)
+	cfg.PATCH("", h.UpdateConfig)
+}
+
+func registerTelegramRoutes(api *gin.RouterGroup, a *App) {
+	h := tg.NewHandler(tg.NewService(a.DB, nil, nil))
+	g := api.Group("/telegram")
+	g.Use(auth.AuthRequired(a.DB, a.Config))
 	cfg := g.Group("/config")
 	cfg.Use(auth.RequireOwner())
 	cfg.GET("", h.GetConfig)

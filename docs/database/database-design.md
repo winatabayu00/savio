@@ -301,6 +301,9 @@ users
 ├── notifications
 ├── audit_logs
 └── user_settings
+│
+├── telegram_settings
+└── telegram_processed
 ```
 
 ---
@@ -339,6 +342,25 @@ ai_requests
 notifications
 audit_logs
 ```
+
+# 9a. Telegram Recap Storage
+
+`telegram_settings` is a singleton row (id = 1) binding one bot to the workspace
+of the OWNER who configured it:
+
+- `enabled` — master switch; when off the worker skips polling entirely.
+- `bot_token` — Telegram Bot API token (never returned unmasked by the API).
+- `chat_id` — authorized chat; messages from any other chat are ignored.
+- `workspace_id` → `workspaces(id)` — the workspace recap expenses are written to.
+- `last_update_id` — best-effort Telegram long-poll offset.
+
+`telegram_processed.update_id` is a PRIMARY KEY that guards long-poll exactly-once:
+an update is claimed (INSERT ... ON CONFLICT DO NOTHING) before being handled, so
+a worker crash between transaction creation and offset ack can never duplicate a
+transaction (AGENTS #105).
+
+Recap writes go through the shared `transactions.Service` (AGENTS #102) as
+POSTED expenses with `source = 'TELEGRAM'`.
 
 Optional future tables:
 

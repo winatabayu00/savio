@@ -39,6 +39,19 @@ export interface AIConfigInput {
   timeout_seconds?: number;
 }
 
+export interface TelegramConfig {
+  enabled: boolean;
+  bot_token_masked: string;
+  chat_id: string;
+  workspace_id: string;
+}
+
+export interface TelegramConfigInput {
+  enabled?: boolean;
+  bot_token?: string;
+  chat_id?: string;
+}
+
 export interface AuthState {
   user: User;
   workspace: Workspace;

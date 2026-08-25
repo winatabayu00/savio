@@ -37,6 +37,7 @@ const (
 	SourceAI        Source = "AI"
 	SourceImport    Source = "IMPORT"
 	SourceRecurring Source = "RECURRING"
+	SourceTelegram  Source = "TELEGRAM"
 	SourceSystem    Source = "SYSTEM"
 )
 

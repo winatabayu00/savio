@@ -28,6 +28,8 @@ Core capabilities:
 - Accounts, categories, transactions, transfers, reconciliation, and recurring activity
 - Budgets, goals, cashflow analytics, deterministic forecasts, and scenario simulation
 - AI categorization, insights, and bounded Savio Copilot tools
+- Telegram recap: send a message like `chocolate hazelnut dutch 24000` to your bot
+  and it becomes a categorized expense
 - Search, filter, sort, pagination, audit logging, queue jobs, and object storage
 
 ## Quick Start

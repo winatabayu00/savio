@@ -2,8 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/app/providers/auth-provider';
 import { getAIConfig, updateAIConfig } from '@/features/settings/api/ai-config.api';
+import {
+  getTelegramConfig,
+  updateTelegramConfig,
+} from '@/features/settings/api/telegram-config.api';
 import { updateSettings } from '@/features/settings/api/settings.api';
-import type { AIConfigInput, UserSettings } from '@/shared/api/types';
+import type {
+  AIConfigInput,
+  TelegramConfigInput,
+  UserSettings,
+} from '@/shared/api/types';
 
 export function SettingsPage() {
   const { auth, refresh } = useAuth();
@@ -133,6 +141,7 @@ export function SettingsPage() {
       </section>
 
       <AiConfigSection canEdit={role === 'OWNER'} />
+      <TelegramConfigSection canEdit={role === 'OWNER'} />
     </div>
   );
 }
@@ -288,6 +297,133 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
           className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Simpan Konfigurasi AI
+        </button>
+      )}
+    </section>
+  );
+}
+
+function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
+  const tgConfig = useQuery({
+    queryKey: ['telegram-config'],
+    queryFn: getTelegramConfig,
+    enabled: canEdit,
+  });
+
+  const saveConfig = useMutation({
+    mutationFn: (input: TelegramConfigInput) => updateTelegramConfig(input),
+    onSuccess: () => {
+      void tgConfig.refetch();
+      setDraft(null);
+    },
+  });
+
+  const cfg = tgConfig.data;
+  const [draft, setDraft] = useState<TelegramConfigInput | null>(null);
+
+  const update = (patch: TelegramConfigInput) =>
+    setDraft((d) => (cfg ? { ...d, ...patch } : d));
+
+  const f = cfg ? { ...cfg, ...draft } : null;
+  if (!f) {
+    if (tgConfig.isPending || !canEdit) return null;
+    return <p className="text-sm text-red-600">Gagal memuat konfigurasi Telegram.</p>;
+  }
+
+  const dirty =
+    !!draft &&
+    (draft.enabled !== undefined ||
+      draft.chat_id !== undefined ||
+      (draft.bot_token ?? '') !== '');
+
+  const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+    <input
+      {...props}
+      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+    />
+  );
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-6">
+      <h2 className="mb-1 text-base font-semibold text-gray-900">Telegram Recap</h2>
+      <p className="mb-4 text-sm text-gray-500">
+        Sambungkan bot Telegram agar pengeluaran bisa dicatat langsung dari chat.
+        Cukup kirim <span className="font-medium">nama + nominal</span>, misal{' '}
+        <span className="font-medium">chocolate hazelnut dutch 24000</span> — Savio
+        mencatatnya ke ruang kerja ini dengan kategori otomatis.
+      </p>
+
+      {!canEdit && (
+        <p className="mb-4 text-sm text-gray-500">
+          Hanya pemilik ruang kerja yang dapat mengubah konfigurasi Telegram.
+        </p>
+      )}
+
+      <label className="flex items-center justify-between py-2">
+        <span className="text-sm text-gray-700">Aktifkan Telegram Recap</span>
+        <input
+          type="checkbox"
+          checked={f.enabled}
+          onChange={(e) => update({ enabled: e.target.checked })}
+          className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+        />
+      </label>
+
+      <div className="mt-3">
+        <label htmlFor="tg_token" className="text-sm text-gray-700">
+          Bot Token
+        </label>
+        <Input
+          id="tg_token"
+          type="password"
+          value={draft?.bot_token ?? ''}
+          onChange={(e) => update({ bot_token: e.target.value })}
+          placeholder={f.bot_token_masked || 'Buat bot via @BotFather, lalu salin token-nya'}
+          autoComplete="new-password"
+          disabled={!canEdit}
+        />
+        <p className="mt-1 text-xs text-gray-400">
+          Token tersimpan: {f.bot_token_masked || '—'}. Kosongkan untuk mempertahankan token yang ada.
+        </p>
+      </div>
+
+      <div className="mt-3">
+        <label htmlFor="tg_chat" className="text-sm text-gray-700">
+          ID Chat yang Diizinkan
+        </label>
+        <Input
+          id="tg_chat"
+          value={draft?.chat_id ?? f.chat_id}
+          onChange={(e) => update({ chat_id: e.target.value })}
+          placeholder="contoh: 123456789"
+          disabled={!canEdit}
+        />
+        <p className="mt-1 text-xs text-gray-400">
+          Kirim <span className="font-medium">/start</span> ke bot Anda, lalu aktifkan{' '}
+          <span className="font-medium">Mode Pengembang</span> &gt;{' '}
+          <span className="font-medium">Chat ID</span> di Telegram untuk melihat ID chat
+          pribadi Anda. Kosongkan agar pesan hanya dibalas instruksi.
+        </p>
+      </div>
+
+      <div className="mt-3 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800">
+        Transaksi yang masuk akan dicatat sebagai pengeluaran <b>POSTED</b> (langsung
+        memengaruhi saldo) dengan kategori otomatis dan sumber 'TELEGRAM'.
+      </div>
+
+      {saveConfig.isError && (
+        <p className="mt-3 text-sm text-red-600">Gagal menyimpan konfigurasi Telegram. Silakan coba lagi.</p>
+      )}
+      {saveConfig.isPending && <p className="mt-3 text-sm text-gray-500">Menyimpan…</p>}
+
+      {canEdit && (
+        <button
+          type="button"
+          disabled={!dirty || saveConfig.isPending}
+          onClick={() => saveConfig.mutate(draft ?? {})}
+          className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Simpan Konfigurasi Telegram
         </button>
       )}
     </section>

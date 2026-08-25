@@ -3119,6 +3119,74 @@ Errors:
 
 ---
 
+# 92b. Telegram Recap Configuration
+
+```http
+GET /api/v1/telegram/config
+```
+
+Authentication: authenticated. Authorization: workspace OWNER.
+
+Response (bot token is never returned raw):
+
+```json
+{
+  "success": true,
+  "data": {
+    "enabled": true,
+    "bot_token_masked": "••••••••1234",
+    "chat_id": "123456789",
+    "workspace_id": "00000000-0000-0000-0000-000000000000"
+  }
+}
+```
+
+```http
+PATCH /api/v1/telegram/config
+```
+
+Partial update; omitted fields keep their current value. An empty/missing
+`bot_token` preserves the stored token (masked round-trip safety). `workspace_id`
+is always bound to the workspace of the configuring OWNER — never taken from the
+client.
+
+Request:
+
+```json
+{
+  "enabled": true,
+  "bot_token": "1234567890:AA...",
+  "chat_id": "123456789"
+}
+```
+
+Errors:
+
+```text
+400 VALIDATION_ERROR        invalid bot_token / chat_id format
+403 PERMISSION_DENIED       user is not a workspace OWNER
+```
+
+## Telegram Recap Bot Behavior
+
+When `enabled` is true and a bot token is configured, the background worker
+long-polls Telegram. Messages from the authorized `chat_id` are handled as:
+
+- `/start` / `/help` → usage instructions reply.
+- Free-form text with an amount at the end (e.g. `chocolate hazelnut dutch 24000`,
+  `grab food 24.500`, `pulsa 50rb`, `kopi 2.5jt`) → creates a POSTED
+  EXPENSE transaction in the bound workspace, sourced `TELEGRAM`, category
+  suggested by the AI categorizer (deterministic keyword fallback when AI is
+  disabled — AGENTS #77), charged to the workspace's first ACTIVE account, dated
+  today in the workspace timezone, and replies with a confirmation.
+- Unrecognized text → help/format reply. No transaction is created.
+
+Messages are exactly-once: each update_id is claimed in `telegram_processed`
+before handling, so crashes never duplicate a transaction. No amount is fetched
+from AI; categorization is AI-assisted only (AGENTS #64).
+
+---
+
 # 93. List AI Insights
 
 ```http
