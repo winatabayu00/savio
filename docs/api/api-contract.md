@@ -2177,16 +2177,15 @@ Request:
 {
   "category_id": "food-category-uuid",
   "amount": "2000000.00",
-  "period_type": "MONTHLY",
-  "start_date": "2026-08-01"
+  "period_start": "2026-08-01",
+  "period_end": "2026-08-31"
 }
 ```
 
-Backend may derive:
-
-```text
-end_date = 2026-08-31
-```
+`category_id` must reference an ACTIVE EXPENSE category available to the
+workspace: a system category or a custom category owned by the workspace.
+INCOME, deleted, or foreign-workspace categories are rejected with
+`VALIDATION_ERROR` (see Invalid Budget Category).
 
 Response:
 
@@ -2223,6 +2222,30 @@ Response:
     "code": "DUPLICATE_BUDGET"
   },
   "message": "An active budget already exists for this category and period."
+}
+```
+
+---
+
+# 68b. Invalid Budget Category
+
+```http
+422 Unprocessable Entity
+```
+
+Returned when `category_id` is missing, malformed, nonexistent, an INCOME
+category, a foreign-workspace category, or a non-active category.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": {
+      "category_id": "Category must be an active expense category in this workspace"
+    }
+  },
+  "message": "Validation failed."
 }
 ```
 
