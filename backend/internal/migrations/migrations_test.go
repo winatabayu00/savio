@@ -3,7 +3,8 @@ package migrations
 import (
 	"database/sql"
 	"errors"
-	"os"
+	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -11,16 +12,22 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
-// TestMigrateUpDownUp verifies the full migration lifecycle against a real
-// PostgreSQL instance. It requires DATABASE_URL to point at an empty database;
-// when the service is unreachable the test is skipped (it cannot run in-memory).
+const (
+	adminURL    = "postgres://savio:savio@localhost:5433/postgres?sslmode=disable"
+	testDBName  = "savio_migrate_test"
+	testDBURL   = "postgres://savio:savio@localhost:5433/savio_migrate_test?sslmode=disable"
+)
+
+// TestMigrateUpDownUp verifies the full migration lifecycle against a dedicated
+// scratch database. Never point this at the dev database: pre-clean steps every
+// migration down, which would destroy real data.
 func TestMigrateUpDownUp(t *testing.T) {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		dsn = "postgres://savio:savio@localhost:5433/savio?sslmode=disable"
-	}
-	if !ping(t, dsn) {
+	if !ping(t, adminURL) {
 		t.Skip("postgres not reachable; skipping migration test (requires real PostgreSQL)")
+	}
+	dsn := createScratchDB(t)
+	if !ping(t, dsn) {
+		t.Skip("scratch database not reachable")
 	}
 
 	newMigrator := func(t *testing.T) (*migrate.Migrate, func()) {
@@ -99,6 +106,27 @@ func TestMigrateUpDownUp(t *testing.T) {
 			t.Errorf("expected table %s to exist", table)
 		}
 	}
+}
+
+func createScratchDB(t *testing.T) string {
+	t.Helper()
+	db, err := sql.Open("postgres", adminURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	// drop + recreate so the test always starts clean regardless of prior state
+	if _, err := db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", testDBName)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(fmt.Sprintf("CREATE DATABASE %s", testDBName)); err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(testDBURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u.String()
 }
 
 func ping(t *testing.T, dsn string) bool {
