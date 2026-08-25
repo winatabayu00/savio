@@ -27,6 +27,7 @@ export interface AIConfig {
   base_url: string;
   api_key_masked: string;
   model: string;
+  persona: string;
   timeout_seconds: number;
 }
 
@@ -36,6 +37,7 @@ export interface AIConfigInput {
   base_url?: string;
   api_key?: string;
   model?: string;
+  persona?: string;
   timeout_seconds?: number;
 }
 

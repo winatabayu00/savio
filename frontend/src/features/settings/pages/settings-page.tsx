@@ -178,6 +178,7 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
     !!draft &&
     (draft.enabled !== undefined || draft.provider !== undefined ||
       draft.base_url !== undefined || draft.model !== undefined ||
+      draft.persona !== undefined ||
       draft.timeout_seconds !== undefined || (draft.api_key ?? '') !== '');
 
   const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
@@ -268,6 +269,26 @@ function AiConfigSection({ canEdit }: { canEdit: boolean }) {
           placeholder="gpt-4o-mini"
           disabled={!canEdit}
         />
+      </div>
+
+      <div className="mt-3">
+        <label htmlFor="ai_persona" className="text-sm text-gray-700">
+          Personality AI
+        </label>
+        <select
+          id="ai_persona"
+          value={f.persona || 'balanced'}
+          onChange={(e) => update({ persona: e.target.value })}
+          disabled={!canEdit}
+          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+        >
+          <option value="balanced">Savio Copilot — Asisten keuangan netral</option>
+          <option value="lenna">Lenna — Penasihat keuangan pribadi</option>
+        </select>
+        <p className="mt-1 text-xs text-gray-400">
+          Personality membentuk nada jawaban AI Copilot dan AI Insights. Lenna berbicara seperti
+          penasihat keuangan pribadi yang tenang dan berwawasan ke depan.
+        </p>
       </div>
 
       <div className="mt-3">

@@ -57,7 +57,11 @@ func (s *Service) Copilot(ctx context.Context, workspaceID uuid.UUID, question s
 	sb.WriteString("Question: ")
 	sb.WriteString(truncate(question, 500))
 
-	out, err := s.complete(ctx, "You are Savio Copilot, a grounded finance assistant. Answer using ONLY the provided facts. JSON only: {\"answer\": string, \"actions\": [string], \"clarification\": string or null}. Do not invent numbers.", sb.String())
+	st, err := s.loadSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.complete(ctx, withPersona("You are Savio Copilot, a grounded finance assistant. Answer using ONLY the provided facts. JSON only: {\"answer\": string, \"actions\": [string], \"clarification\": string or null}. Do not invent numbers.", st.Persona), sb.String())
 	if err != nil {
 		return nil, err
 	}

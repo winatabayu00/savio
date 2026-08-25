@@ -27,6 +27,7 @@ type Config struct {
 	AIBaseURL     string
 	AIAPIKey      string
 	AIModel       string
+	AIPersona     string
 	AITimeout     time.Duration
 	AIToolTimeout time.Duration
 
@@ -56,6 +57,7 @@ func Load() (*Config, error) {
 		AIBaseURL:     os.Getenv("AI_BASE_URL"),
 		AIAPIKey:      os.Getenv("AI_API_KEY"),
 		AIModel:       get("AI_MODEL", "gpt-4o-mini"),
+		AIPersona:     get("AI_PERSONA", "balanced"),
 		AITimeout:     getDur("AI_TIMEOUT_SECONDS", 20) * time.Second,
 		AIToolTimeout: 10 * time.Second,
 
@@ -83,6 +85,9 @@ func Load() (*Config, error) {
 			slog.Warn("AI_ENABLED=true but provider is not mock and credentials are missing; AI features will degrade",
 				"provider", cfg.AIProvider)
 		}
+	}
+	if cfg.AIPersona != "balanced" && cfg.AIPersona != "lenna" {
+		return nil, fmt.Errorf("AI_PERSONA must be one of 'balanced' or 'lenna', got %q", cfg.AIPersona)
 	}
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("missing critical configuration: %s", strings.Join(missing, ", "))

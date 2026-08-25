@@ -22,6 +22,7 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/savio/savio/backend/internal/ai"
+	"github.com/savio/savio/backend/internal/accounts"
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/migrations"
 	"github.com/savio/savio/backend/internal/platform/authctx"
@@ -181,8 +182,36 @@ func testCfg(enabled bool) *config.Config {
 		AIProvider: "mock",
 		AITimeout:  time.Second * 5,
 		AIModel:    "test-model",
+		AIPersona:  "balanced",
 		AIBaseURL:  "",
 		AIAPIKey:   "",
+	}
+}
+
+func TestCategorizeEntryPicksCategoryAndAccount(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	wsID, owner := fixture(t)
+	goPay := uuid.New()
+	savings := uuid.New()
+	mustNil(t, db.Create(&accounts.Account{ID: goPay, WorkspaceID: wsID, Name: "GoPay", Type: "EWALLET", Currency: "IDR", Status: "ACTIVE"}).Error)
+	mustNil(t, db.Create(&accounts.Account{ID: savings, WorkspaceID: wsID, Name: "Tabungan", Type: "SAVINGS", Currency: "IDR", Status: "ACTIVE"}).Error)
+	t.Cleanup(func() {
+		db.Exec(`DELETE FROM workspace_memberships WHERE workspace_id = $1`, wsID)
+		db.Exec(`DELETE FROM accounts WHERE workspace_id = $1`, wsID)
+		db.Exec(`DELETE FROM users WHERE id = $1`, owner)
+	})
+	svc := ai.NewService(db, testCfg(true))
+	res, err := svc.CategorizeEntry(t.Context(), wsID, "lunch at warung", "")
+	if err != nil {
+		t.Fatalf("CategorizeEntry: %v", err)
+	}
+	if res.CategoryGuess != "Food & Dining" {
+		t.Fatalf("category = %q", res.CategoryGuess)
+	}
+	if res.AccountGuess != "GoPay" {
+		t.Fatalf("account = %q", res.AccountGuess)
 	}
 }
 

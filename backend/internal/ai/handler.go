@@ -173,6 +173,7 @@ type configResponse struct {
 	BaseURL        string `json:"base_url"`
 	APIKeyMasked   string `json:"api_key_masked"`
 	Model          string `json:"model"`
+	Persona        string `json:"persona"`
 	TimeoutSeconds int    `json:"timeout_seconds"`
 }
 
@@ -193,6 +194,7 @@ func toConfigResponse(st *Settings) configResponse {
 		BaseURL:        st.BaseURL,
 		APIKeyMasked:   maskKey(st.APIKey),
 		Model:          st.Model,
+		Persona:        st.Persona,
 		TimeoutSeconds: st.TimeoutSeconds,
 	}
 }
@@ -212,6 +214,7 @@ type updateConfigReq struct {
 	BaseURL        *string `json:"base_url"`
 	APIKey         *string `json:"api_key"`
 	Model          *string `json:"model"`
+	Persona        *string `json:"persona"`
 	TimeoutSeconds *int    `json:"timeout_seconds"`
 }
 
@@ -231,6 +234,7 @@ func (h *Handler) UpdateConfig(c *gin.Context) {
 		BaseURL:        req.BaseURL,
 		APIKey:         req.APIKey,
 		Model:          req.Model,
+		Persona:        req.Persona,
 		TimeoutSeconds: req.TimeoutSeconds,
 	}
 	st, err := h.svc.UpdateSettings(c.Request.Context(), in)
@@ -263,6 +267,12 @@ func validateConfigReq(req *updateConfigReq) error {
 	}
 	if req.Model != nil && strings.TrimSpace(*req.Model) == "" {
 		fields["model"] = "model is required"
+	}
+	if req.Persona != nil {
+		p := strings.TrimSpace(*req.Persona)
+		if p != "balanced" && p != "lenna" {
+			fields["persona"] = "persona must be 'balanced' or 'lenna'"
+		}
 	}
 	if len(fields) > 0 {
 		return errs.ValidationFields(fields)

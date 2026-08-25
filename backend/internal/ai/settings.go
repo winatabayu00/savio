@@ -20,6 +20,7 @@ type Settings struct {
 	BaseURL        string    `gorm:"column:base_url;type:text"`
 	APIKey         string    `gorm:"column:api_key;type:text"`
 	Model          string    `gorm:"column:model;type:varchar(120)"`
+	Persona        string    `gorm:"column:persona;type:varchar(20)"`
 	TimeoutSeconds int       `gorm:"column:timeout_seconds"`
 	UpdatedAt      time.Time `gorm:"column:updated_at"`
 }
@@ -33,10 +34,10 @@ func seedSettings(db *gorm.DB, cfg *config.Config) error {
 	err := db.Where("id = 1").First(&s).Error
 	if gorm.ErrRecordNotFound == err {
 		return db.Exec(
-			`INSERT INTO ai_settings (id, enabled, provider, base_url, api_key, model, timeout_seconds, updated_at)
-			 VALUES (1, ?, ?, ?, ?, ?, ?, NOW())
+			`INSERT INTO ai_settings (id, enabled, provider, base_url, api_key, model, persona, timeout_seconds, updated_at)
+			 VALUES (1, ?, ?, ?, ?, ?, ?, ?, NOW())
 			 ON CONFLICT (id) DO NOTHING`,
-			cfg.AIEnabled, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel,
+			cfg.AIEnabled, cfg.AIProvider, cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel, cfg.AIPersona,
 			int(cfg.AITimeout/time.Second)).Error
 	}
 	if err != nil {
@@ -49,6 +50,7 @@ func seedSettings(db *gorm.DB, cfg *config.Config) error {
 			"base_url":        cfg.AIBaseURL,
 			"api_key":         cfg.AIAPIKey,
 			"model":           cfg.AIModel,
+			"persona":         cfg.AIPersona,
 			"timeout_seconds": int(cfg.AITimeout / time.Second),
 			"updated_at":      time.Now().UTC(),
 		}).Error
@@ -87,6 +89,7 @@ type UpdateSettingsInput struct {
 	BaseURL        *string
 	APIKey         *string
 	Model          *string
+	Persona        *string
 	TimeoutSeconds *int
 }
 
@@ -113,6 +116,9 @@ func (s *Service) UpdateSettings(ctx context.Context, in *UpdateSettingsInput) (
 	}
 	if in.Model != nil {
 		st.Model = strings.TrimSpace(*in.Model)
+	}
+	if in.Persona != nil {
+		st.Persona = strings.TrimSpace(*in.Persona)
 	}
 	if in.TimeoutSeconds != nil {
 		st.TimeoutSeconds = *in.TimeoutSeconds

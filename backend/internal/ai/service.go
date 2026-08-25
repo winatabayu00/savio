@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -133,8 +134,12 @@ func (s *Service) Insight(ctx context.Context, workspaceID uuid.UUID, from, to, 
 		pct(comparison.IncomeDelta), pct(comparison.ExpenseDelta), topCats(cats),
 	)
 	system := "You write concise, factual finance insights. JSON only: {\"headline\": string, \"detail\": string, \"signal\": string one of [spending_increase, spending_decrease, income_change, low_balance_risk, stable, other], \"related_facts\": [string]}. Never invent numbers not provided."
+	st, err := s.loadSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
 	prompt := "INSIGHT Facts: " + fact
-	m, err := s.complete(ctx, system, prompt)
+	m, err := s.complete(ctx, withPersona(system, st.Persona), prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +169,96 @@ func (s *Service) Insight(ctx context.Context, workspaceID uuid.UUID, from, to, 
 func (s *Service) forecastService() *forecast.Service { return forecast.NewService(s.db) }
 func (s *Service) budgetService() *budgets.Service    { return budgets.NewService(s.db) }
 func (s *Service) goalService() *goals.Service        { return goals.NewService(s.db) }
+
+type CategoryRef struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+type AccountRef struct {
+	ID       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	Type     string    `json:"type"`
+	Currency string    `json:"currency"`
+}
+
+type EntryContext struct {
+	Categories []CategoryRef `json:"categories"`
+	Accounts   []AccountRef  `json:"accounts"`
+}
+
+type EntryResult struct {
+	CategoryGuess string  `json:"category_guess"`
+	AccountGuess  string  `json:"account_guess"`
+	Confidence    float64 `json:"confidence"`
+}
+
+// CategorizeEntry sends the candidate categories and the workspace's active
+// accounts as one structured JSON reference so the model can pick both the
+// category and the wallet/account an entry belongs to. Only names/types/currency
+// leave the DB — no balances, no finance authority (AGENTS #64, #72).
+func (s *Service) CategorizeEntry(ctx context.Context, workspaceID uuid.UUID, description, merchant string) (*EntryResult, error) {
+	refs, err := s.entryReferences(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := json.Marshal(refs)
+	if err != nil {
+		return nil, errs.AIValidation("failed to encode entry reference")
+	}
+	system := "You classify a personal finance entry. Pick exactly one category_name and one account_name from the REFERENCE JSON only. Return JSON only: {\"category_guess\": string, \"confidence\": number 0-1, \"account_guess\": string}."
+	prompt := "ENTRY REFERENCE (JSON): " + string(raw) +
+		"\nDescription: " + truncate(description, 200) +
+		"\nMerchant: " + truncate(merchant, 200)
+	m, err := s.complete(ctx, system, prompt)
+	if err != nil {
+		return nil, err
+	}
+	guess, err := ai.RequireString(m, "category_guess")
+	if err != nil {
+		return nil, errs.AIValidation(err.Error())
+	}
+	account, _ := ai.RequireString(m, "account_guess")
+	if !refs.hasAccount(account) {
+		account = "" // untrusted/nonexistent account → caller falls back to default
+	}
+	conf, _ := ai.RequireFloat(m, "confidence")
+	if conf < 0 || conf > 1 {
+		conf = 0
+	}
+	return &EntryResult{CategoryGuess: guess, AccountGuess: account, Confidence: conf}, nil
+}
+
+func (s *Service) entryReferences(ctx context.Context, workspaceID uuid.UUID) (*EntryContext, error) {
+	var cats []CategoryRef
+	if err := s.db.WithContext(ctx).Table("categories").
+		Where("(workspace_id = ? OR is_system = TRUE) AND type = 'EXPENSE' AND status = 'ACTIVE'", workspaceID).
+		Order("name ASC").
+		Scan(&cats).Error; err != nil {
+		return nil, err
+	}
+	if len(cats) == 0 {
+		cats = []CategoryRef{{Name: "Other Expense"}}
+	}
+	// ponytail: first created account is the alloc-to default; AI may pick any
+	// of these but a wrong pick only falls back, it never writes finance state.
+	var accs []AccountRef
+	if err := s.db.WithContext(ctx).Table("accounts").
+		Where("workspace_id = ? AND status = 'ACTIVE'", workspaceID).
+		Order("created_at").Scan(&accs).Error; err != nil {
+		return nil, err
+	}
+	return &EntryContext{Categories: cats, Accounts: accs}, nil
+}
+
+func (r *EntryContext) hasAccount(name string) bool {
+	for _, a := range r.Accounts {
+		if a.Name == name {
+			return true
+		}
+	}
+	return false
+}
 
 func (s *Service) workspaceExpenseCategories(ctx context.Context, workspaceID uuid.UUID) ([]string, error) {
 	var names []string

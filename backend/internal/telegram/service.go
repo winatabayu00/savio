@@ -125,8 +125,17 @@ func (s *Service) handle(ctx context.Context, st *Settings, u Update, client *bo
 	// ponytail: mock provider returns a canned "Food & Dining" for every input;
 	// never let the demo facade override deterministic keyword categorization.
 	if !s.ai.UsesMockProvider(ctx) {
-		if guess, cerr := s.ai.Categorize(ctx, wsID, desc, ""); cerr == nil && guess.CategoryGuess != "" {
-			catName = guess.CategoryGuess
+		// Real AI sees a JSON reference of candidate categories AND active
+		// accounts, so it can also say which wallet the entry belongs to.
+		// A wrong account guess only falls back to the default — the AI never
+		// writes finance state (AGENTS #67).
+		if res, cerr := s.ai.CategorizeEntry(ctx, wsID, desc, ""); cerr == nil && res != nil {
+			if res.CategoryGuess != "" {
+				catName = res.CategoryGuess
+			}
+			if res.AccountGuess != "" {
+				acctID = s.findAccountIDByName(ctx, wsID, res.AccountGuess, acctID)
+			}
 		}
 	}
 	catID := resolveCategoryID(ctx, s.db, wsID, catName)
@@ -170,6 +179,16 @@ func (s *Service) defaultAccountID(ctx context.Context, wsID uuid.UUID) (uuid.UU
 		Where("workspace_id = ? AND status = 'ACTIVE'", wsID).
 		Order("created_at").Limit(1).Select("id").Take(&acc).Error
 	return acc.ID, err
+}
+
+func (s *Service) findAccountIDByName(ctx context.Context, wsID uuid.UUID, name string, fallback uuid.UUID) uuid.UUID {
+	var acc struct{ ID uuid.UUID }
+	if err := s.db.WithContext(ctx).Table("accounts").
+		Where("workspace_id = ? AND status = 'ACTIVE' AND name = ?", wsID, name).
+		Select("id").Take(&acc).Error; err == nil && acc.ID != uuid.Nil {
+		return acc.ID
+	}
+	return fallback
 }
 
 // workspaceDate returns today in the workspace timezone so the date-only field

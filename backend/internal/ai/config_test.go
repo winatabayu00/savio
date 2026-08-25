@@ -64,6 +64,9 @@ func TestConfigGetAndMaskedKey(t *testing.T) {
 	if data["base_url"].(string) != "https://api.openai.test/v1" {
 		t.Fatalf("base_url = %v", data["base_url"])
 	}
+	if data["persona"].(string) != "balanced" {
+		t.Fatalf("persona = %v, want default balanced", data["persona"])
+	}
 }
 
 func TestConfigUpdatePersistsAcrossServices(t *testing.T) {
@@ -75,7 +78,7 @@ func TestConfigUpdatePersistsAcrossServices(t *testing.T) {
 	r := newConfigRouter(t, wsID, h)
 
 	w := doReq(t, r, "PATCH", "/api/v1/ai/config", owner.String(),
-		`{"enabled":false,"provider":"openai","base_url":"https://api.openai.test/v1","model":"gpt-4o","timeout_seconds":30}`)
+		`{"enabled":false,"provider":"openai","base_url":"https://api.openai.test/v1","model":"gpt-4o","persona":"lenna","timeout_seconds":30}`)
 	if w.Code != http.StatusOK {
 		t.Fatalf("patch: %d %s", w.Code, w.Body.String())
 	}
@@ -85,7 +88,7 @@ func TestConfigUpdatePersistsAcrossServices(t *testing.T) {
 	r2 := newConfigRouter(t, wsID, h2)
 	w = doReq(t, r2, "GET", "/api/v1/ai/config", owner.String(), "")
 	data := decodeBody(t, w)["data"].(map[string]any)
-	if data["enabled"].(bool) || data["provider"].(string) != "openai" || data["model"].(string) != "gpt-4o" {
+	if data["enabled"].(bool) || data["provider"].(string) != "openai" || data["model"].(string) != "gpt-4o" || data["persona"].(string) != "lenna" {
 		t.Fatalf("persisted config = %v", data)
 	}
 }
@@ -121,6 +124,7 @@ func TestConfigValidation(t *testing.T) {
 		`{"provider":"claude"}`,
 		`{"timeout_seconds":0}`,
 		`{"base_url":"not a url"}`,
+		`{"persona":"lawyer"}`,
 	} {
 		w := doReq(t, r, "PATCH", "/api/v1/ai/config", owner.String(), body)
 		if w.Code != http.StatusUnprocessableEntity {

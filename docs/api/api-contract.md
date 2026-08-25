@@ -3084,6 +3084,7 @@ Response:
     "base_url": "https://api.openai.com/v1",
     "api_key_masked": "••••1234",
     "model": "gpt-4o-mini",
+    "persona": "balanced",
     "timeout_seconds": 20
   }
 }
@@ -3095,7 +3096,10 @@ PATCH /api/v1/ai/config
 
 Partial update; omitted fields keep their current value. An empty/missing `api_key`
 preserves the stored key. `provider` is one of `openai` | `mock`; empty `base_url`
-with provider `mock` uses the built-in offline mock provider.
+with provider `mock` uses the built-in offline mock provider. `persona` selects the
+AI personality (`balanced` | `lenna`) applied to Copilot answers and AI Insights;
+`balanced` is the default neutral Savio Copilot voice, `lenna` the personal financial
+advisor persona.
 
 Request:
 
@@ -3106,6 +3110,7 @@ Request:
   "base_url": "https://api.openai.com/v1",
   "api_key": "sk-...",
   "model": "gpt-4o-mini",
+  "persona": "lenna",
   "timeout_seconds": 20
 }
 ```
@@ -3113,7 +3118,7 @@ Request:
 Errors:
 
 ```text
-400 VALIDATION_ERROR        invalid provider / base_url / model / timeout_seconds
+400 VALIDATION_ERROR        invalid provider / base_url / model / persona / timeout_seconds
 403 PERMISSION_DENIED       user is not a workspace OWNER
 ```
 

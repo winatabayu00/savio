@@ -63,6 +63,8 @@ func (Mock) Complete(ctx context.Context, _, prompt string) (string, error) {
 		return `{"category_guess": "not valid json`, nil
 	case strings.Contains(prompt, "CATEGORIZE"):
 		return `{"category_guess":"Food & Dining","confidence":0.9,"matched_rule":"system"}`, nil
+	case strings.Contains(prompt, "ENTRY"):
+		return `{"category_guess":"Food & Dining","confidence":0.9,"account_guess":"GoPay"}`, nil
 	case strings.Contains(prompt, "INSIGHT"):
 		return `{"headline":"Spending is up this month","detail":"Expenses rose 12% vs last month.","signal":"spending_increase","related_facts":["expenses 12%","income flat"]}`, nil
 	case strings.Contains(prompt, "COPILOT"):
