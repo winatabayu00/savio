@@ -14,6 +14,7 @@ import (
 	"github.com/savio/savio/backend/internal/goals"
 	"github.com/savio/savio/backend/internal/platform/config"
 	"github.com/savio/savio/backend/internal/platform/money"
+	"github.com/savio/savio/backend/internal/platform/password"
 	"github.com/savio/savio/backend/internal/recurring"
 	"github.com/savio/savio/backend/internal/transactions"
 	"github.com/savio/savio/backend/internal/users"
@@ -33,7 +34,15 @@ func SeedDemo(ctx context.Context, db *gorm.DB) error {
 	}
 	var existing users.User
 	if err := db.Where("email = ?", demoEmail).First(&existing).Error; err == nil {
-		fmt.Printf("demo user already exists (%s), skipping\n", existing.Email)
+		// Demo credentials must remain usable after source credential changes.
+		hash, hashErr := password.Hash(demoPassword)
+		if hashErr != nil {
+			return fmt.Errorf("hash demo password: %w", hashErr)
+		}
+		if updateErr := db.WithContext(ctx).Model(&existing).Update("password_hash", hash).Error; updateErr != nil {
+			return fmt.Errorf("reset demo password: %w", updateErr)
+		}
+		fmt.Printf("demo user ready -> email: %s password: %s\n", demoEmail, demoPassword)
 		return nil
 	}
 
