@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AxiosError } from 'axios';
-import { ApiError, toApiError, type ApiErrorBody } from '@/shared/api/client';
+import { ApiError, errorMessage, toApiError, type ApiErrorBody } from '@/shared/api/client';
+import { formatAmountString } from '@/shared/utils/money';
 
 function axiosErrorWith(status: number, body?: unknown): AxiosError<ApiErrorBody> {
   return {
@@ -53,5 +54,24 @@ describe('ApiError mapping', () => {
     }));
     expect(err.status).toBe(429);
     expect(err.code).toBe('RATE_LIMITED');
+  });
+
+  it('uses actionable UI copy for version conflicts', () => {
+    expect(errorMessage(new ApiError(409, 'VERSION_CONFLICT', 'ignored'))).toContain('Reload');
+  });
+
+  it('keeps the server request ID for support correlation', () => {
+    const err = toApiError(axiosErrorWith(500, {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', details: null },
+      message: 'An unexpected error occurred',
+      request_id: 'req_123',
+    }));
+    expect(err.requestId).toBe('req_123');
+  });
+
+  it('formats amounts and never renders NaN', () => {
+    expect(formatAmountString('1500000.00', 'IDR')).toMatch(/Rp\s?1\.500\.000/);
+    expect(formatAmountString('not-money', 'IDR')).toBe('—');
   });
 });

@@ -8,24 +8,28 @@ export interface ApiErrorBody {
   success: false;
   error: { code?: string; details?: Record<string, string[]> | null };
   message?: string;
+  request_id?: string;
 }
 
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
   readonly details?: Record<string, string[]> | null;
+  readonly requestId?: string;
 
   constructor(
     status: number,
     code: string | undefined,
     message: string,
     details?: Record<string, string[]> | null,
+    requestId?: string,
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.details = details;
+    this.requestId = requestId;
   }
 }
 
@@ -147,5 +151,14 @@ export function toApiError(error: AxiosError<ApiErrorBody>): ApiError {
         ? 'Unable to reach the server. Check your connection and try again.'
         : 'Something went wrong. Please try again.';
   }
-  return new ApiError(status, data?.error?.code, message, data?.error?.details);
+  return new ApiError(status, data?.error?.code, message, data?.error?.details, data?.request_id);
+}
+
+export function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 409) return 'This record changed. Reload the latest data, then try again.';
+    if (error.status === 429) return 'Too many requests. Please wait a moment before trying again.';
+    return error.message;
+  }
+  return 'Something went wrong. Please try again.';
 }
