@@ -68,7 +68,7 @@ func (s *Service) Compute(ctx context.Context, workspaceID uuid.UUID, horizonDay
 	asOf := atDate(now)
 	horizon := asOf.AddDate(0, 0, horizonDays)
 
-	opening, err := s.liquidBalance(ctx, workspaceID)
+	opening, err := s.liquidBalance(ctx, workspaceID, asOf)
 	if err != nil {
 		return nil, err
 	}
@@ -215,13 +215,19 @@ func (s *Service) Compute(ctx context.Context, workspaceID uuid.UUID, horizonDay
 	return res, nil
 }
 
-func (s *Service) liquidBalance(ctx context.Context, workspaceID uuid.UUID) (int64, error) {
+// liquidBalance is the realized liquid balance as of today: opening balanced
+// against POSTED activity dated up to asOf. Future-dated POSTED transactions
+// are intentionally excluded here and surfaced instead as KNOWN events, so
+// they are never double-counted.
+func (s *Service) liquidBalance(ctx context.Context, workspaceID uuid.UUID, asOf time.Time) (int64, error) {
 	var total int64
 	err := s.db.WithContext(ctx).Raw(`
 		SELECT COALESCE(SUM(a.opening_balance), 0)
 			+ COALESCE((SELECT SUM(CASE WHEN t.type = 'EXPENSE' THEN -t.amount ELSE t.amount END)
-				FROM transactions t WHERE t.workspace_id = $1 AND t.status = 'POSTED'), 0)
-		FROM accounts a WHERE a.workspace_id = $1 AND a.status = 'ACTIVE'`, workspaceID).Scan(&total).Error
+				FROM transactions t
+				WHERE t.workspace_id = $1 AND t.status = 'POSTED' AND t.transaction_date <= $2), 0)
+		FROM accounts a WHERE a.workspace_id = $1 AND a.status = 'ACTIVE'`,
+		workspaceID, asOf.Format("2006-01-02")).Scan(&total).Error
 	return total, err
 }
 
