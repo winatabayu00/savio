@@ -26,6 +26,10 @@ type Message struct {
 // validate/enforce JSON schemas themselves.
 type Provider interface {
 	Complete(ctx context.Context, system, prompt string) (string, error)
+	// Mock reports whether this is the deterministic test/demo provider, in
+	// which case callers should prefer deterministic rules over its canned
+	// output (AGENTS #77: AI degradation must not corrupt behavior).
+	Mock() bool
 }
 
 type Config interface {
@@ -51,6 +55,8 @@ type Mock struct {
 	WhenEmpty bool
 }
 
+func (Mock) Mock() bool { return true }
+
 func (Mock) Complete(ctx context.Context, _, prompt string) (string, error) {
 	switch {
 	case strings.Contains(prompt, "BROKEN"):
@@ -72,6 +78,8 @@ type OpenAIProvider struct {
 	cfg Config
 }
 
+func (*OpenAIProvider) Mock() bool { return false }
+
 func (o *OpenAIProvider) Complete(ctx context.Context, system, prompt string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, o.cfg.AITimeout())
 	defer cancel()
@@ -89,7 +97,14 @@ func (o *OpenAIProvider) Complete(ctx context.Context, system, prompt string) (s
 	if err != nil {
 		return "", fmt.Errorf("ai: marshal: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(o.cfg.AIBaseURL(), "/")+"/chat/completions", bytes.NewReader(payload))
+	// Accept both an API root and a full chat/completions URL: appending
+	// unconditionally would turn a user-supplied ".../chat/completions" into a
+	// broken double path.
+	base := strings.TrimRight(o.cfg.AIBaseURL(), "/")
+	if !strings.HasSuffix(base, "/chat/completions") {
+		base += "/chat/completions"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base, bytes.NewReader(payload))
 	if err != nil {
 		return "", fmt.Errorf("ai: request: %w", err)
 	}

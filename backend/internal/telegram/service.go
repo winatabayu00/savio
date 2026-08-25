@@ -122,8 +122,12 @@ func (s *Service) handle(ctx context.Context, st *Settings, u Update, client *bo
 	}
 
 	catName := categorizeKeyword(desc)
-	if guess, cerr := s.ai.Categorize(ctx, wsID, desc, ""); cerr == nil && guess.CategoryGuess != "" {
-		catName = guess.CategoryGuess
+	// ponytail: mock provider returns a canned "Food & Dining" for every input;
+	// never let the demo facade override deterministic keyword categorization.
+	if !s.ai.UsesMockProvider(ctx) {
+		if guess, cerr := s.ai.Categorize(ctx, wsID, desc, ""); cerr == nil && guess.CategoryGuess != "" {
+			catName = guess.CategoryGuess
+		}
 	}
 	catID := resolveCategoryID(ctx, s.db, wsID, catName)
 

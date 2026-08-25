@@ -62,6 +62,18 @@ func (s *Service) complete(ctx context.Context, system, prompt string) (map[stri
 	return m, nil
 }
 
+// UsesMockProvider reports whether the current configuration resolves to the
+// deterministic test/demo provider (no base URL or API key configured). Callers
+// that need a trustworthy guess must fall back to deterministic rules instead
+// of consuming the mock's canned output.
+func (s *Service) UsesMockProvider(ctx context.Context) bool {
+	st, err := s.loadSettings(ctx)
+	if err != nil {
+		return true
+	}
+	return ai.NewProvider(settingsAdapter{st: st}).Mock()
+}
+
 type CategorizeResult struct {
 	CategoryGuess string  `json:"category_guess"`
 	Confidence    float64 `json:"confidence"`
