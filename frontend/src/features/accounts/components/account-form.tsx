@@ -107,7 +107,7 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
             value={amount}
             onChange={(e) => {
               setAmount(e.target.value);
-              setValue('opening_balance', Number(e.target.value) * 100, { shouldValidate: true });
+              setValue('opening_balance', e.target.value, { shouldValidate: true });
             }}
           />
           {errors.opening_balance ? (
