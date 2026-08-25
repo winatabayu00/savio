@@ -31,7 +31,7 @@ func New(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *App {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	engine := gin.New()
-	engine.Use(mw.Recovery(), mw.RequestID(), mw.Logging(), mw.SecurityHeaders(), mw.CORS(cfg.FrontendOrigin))
+	engine.Use(mw.RequestID(), mw.Recovery(), mw.Logging(), mw.SecurityHeaders(), mw.CORS(cfg.FrontendOrigin))
 
 	app := &App{Config: cfg, DB: db, Redis: rdb, Engine: engine}
 	app.registerCoreRoutes()

@@ -3,7 +3,9 @@ package mw
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -84,7 +86,8 @@ func Recovery() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if r := recover(); r != nil {
-				slog.Error("panic recovered", "request_id", c.GetString(RequestIDKey), "panic", r)
+				slog.Error("panic recovered", "request_id", c.GetString(RequestIDKey), "method", c.Request.Method,
+					"path", c.Request.URL.Path, "panic", r, "stack", string(debug.Stack()))
 				httpx.Fail(c, errs.Internal(errs2(r)))
 				c.Abort()
 			}
@@ -97,9 +100,5 @@ func errs2(v any) error {
 	if e, ok := v.(error); ok {
 		return e
 	}
-	return &panicError{value: v}
+	return fmt.Errorf("panic: %v", v)
 }
-
-type panicError struct{ value any }
-
-func (p *panicError) Error() string { return "panic" }

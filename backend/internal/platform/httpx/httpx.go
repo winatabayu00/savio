@@ -13,6 +13,8 @@ import (
 	"github.com/savio/savio/backend/internal/platform/errs"
 )
 
+const requestIDKey = "request_id"
+
 // Success renders the standard success envelope.
 func Success(c *gin.Context, status int, data any) {
 	c.JSON(status, gin.H{"success": true, "data": data})
@@ -36,11 +38,17 @@ func Collection(c *gin.Context, data any, page, limit, total int) {
 	})
 }
 
-// Fail renders the standard error envelope (never exposes internal causes).
+// Fail renders the standard error envelope. Internal causes stay in structured logs.
 func Fail(c *gin.Context, err error) {
 	appErr := errs.From(err)
 	if appErr.Cause != nil {
-		slog.Error("request failed", "error", appErr.Cause.Error(), "code", appErr.Code)
+		slog.Error("request failed",
+			"request_id", c.GetString(requestIDKey),
+			"method", c.Request.Method,
+			"path", c.Request.URL.Path,
+			"status", appErr.Status,
+			"code", appErr.Code,
+			"error", appErr.Cause.Error())
 	}
 	c.JSON(appErr.Status, gin.H{
 		"success": false,
@@ -48,7 +56,8 @@ func Fail(c *gin.Context, err error) {
 			"code":    appErr.Code,
 			"details": appErr.Details,
 		},
-		"message": appErr.Message,
+		"message":    appErr.Message,
+		"request_id": c.GetString(requestIDKey),
 	})
 }
 
