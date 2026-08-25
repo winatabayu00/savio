@@ -43,47 +43,55 @@ export function RegisterPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">Create your account</h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <h2 className="fs-20 fw-bolder mb-1">Create your account</h2>
+      <p className="fs-12 fw-medium text-muted mb-4">
         Your personal cashflow intelligence workspace.
       </p>
-      <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
-        <TextField
-          label="Name"
-          autoComplete="name"
-          error={errors.name?.message}
-          {...register('name')}
-        />
-        <TextField
-          label="Email"
-          type="email"
-          autoComplete="email"
-          error={errors.email?.message}
-          {...register('email')}
-        />
-        <TextField
-          label="Password"
-          type="password"
-          autoComplete="new-password"
-          error={errors.password?.message}
-          {...register('password')}
-        />
+      <form onSubmit={onSubmit} className="w-100" noValidate>
+        <div className="mb-3">
+          <TextField
+            label="Name"
+            autoComplete="name"
+            error={errors.name?.message}
+            {...register('name')}
+          />
+        </div>
+        <div className="mb-3">
+          <TextField
+            label="Email"
+            type="email"
+            autoComplete="email"
+            error={errors.email?.message}
+            {...register('email')}
+          />
+        </div>
+        <div className="mb-3">
+          <TextField
+            label="Password"
+            type="password"
+            autoComplete="new-password"
+            error={errors.password?.message}
+            {...register('password')}
+          />
+        </div>
         {formError ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-danger fs-13">
             {formError}
           </p>
         ) : null}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-light disabled:opacity-60"
-        >
-          {isSubmitting ? 'Creating account…' : 'Create account'}
-        </button>
+        <div className="mt-4">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="btn btn-lg btn-primary w-100"
+          >
+            {isSubmitting ? 'Creating account…' : 'Create account'}
+          </button>
+        </div>
       </form>
-      <p className="mt-4 text-center text-sm text-gray-500">
+      <p className="mt-5 mb-0 text-muted fs-13 text-center">
         Already have an account?{' '}
-        <Link to="/login" className="font-medium text-brand hover:underline">
+        <Link to="/login" className="fw-bold text-primary">
           Sign in
         </Link>
       </p>

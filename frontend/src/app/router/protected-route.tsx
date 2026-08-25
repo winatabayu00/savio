@@ -7,7 +7,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (status === 'UNKNOWN') {
     return (
-      <div className="flex min-h-screen items-center justify-center text-gray-500">
+      <div className="d-flex align-items-center justify-content-center min-vh-100 text-muted">
+        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
         Loading…
       </div>
     );

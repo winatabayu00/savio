@@ -2,18 +2,25 @@ import { Outlet } from 'react-router-dom';
 
 export function AuthLayout() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="text-2xl font-semibold text-brand">Savio</div>
-          <p className="mt-1 text-sm text-gray-500">
-            Personal cashflow intelligence
-          </p>
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-          <Outlet />
+    <main className="auth-minimal-wrapper">
+      <div className="auth-minimal-inner">
+        <div className="minimal-card-wrapper">
+          <div className="card mb-4 mt-5 mx-4 mx-sm-0 position-relative">
+            <div className="wd-50 bg-primary p-2 rounded-circle shadow-lg position-absolute translate-middle top-0 start-50 d-flex align-items-center justify-content-center fw-bold text-white">
+              S
+            </div>
+            <div className="card-body p-sm-5">
+              <div className="mb-4 text-center">
+                <div className="fs-20 fw-bolder text-dark">Savio</div>
+                <p className="fs-12 fw-medium text-muted mb-0">
+                  Personal cashflow intelligence
+                </p>
+              </div>
+              <Outlet />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

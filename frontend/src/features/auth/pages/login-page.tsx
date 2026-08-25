@@ -42,41 +42,47 @@ export function LoginPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">Sign in to Savio</h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <h2 className="fs-20 fw-bolder mb-1">Login</h2>
+      <p className="fs-12 fw-medium text-muted mb-4">
         Understand your cashflow, forecast your future.
       </p>
-      <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
-        <TextField
-          label="Email"
-          type="email"
-          autoComplete="email"
-          error={errors.email?.message}
-          {...register('email')}
-        />
-        <TextField
-          label="Password"
-          type="password"
-          autoComplete="current-password"
-          error={errors.password?.message}
-          {...register('password')}
-        />
+      <form onSubmit={onSubmit} className="w-100" noValidate>
+        <div className="mb-3">
+          <TextField
+            label="Email"
+            type="email"
+            autoComplete="email"
+            error={errors.email?.message}
+            {...register('email')}
+          />
+        </div>
+        <div className="mb-3">
+          <TextField
+            label="Password"
+            type="password"
+            autoComplete="current-password"
+            error={errors.password?.message}
+            {...register('password')}
+          />
+        </div>
         {formError ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-danger fs-13">
             {formError}
           </p>
         ) : null}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-light disabled:opacity-60"
-        >
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
-        </button>
+        <div className="mt-4">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="btn btn-lg btn-primary w-100"
+          >
+            {isSubmitting ? 'Signing in…' : 'Sign in'}
+          </button>
+        </div>
       </form>
-      <p className="mt-4 text-center text-sm text-gray-500">
+      <p className="mt-5 mb-0 text-muted fs-13 text-center">
         No account?{' '}
-        <a href="/register" className="font-medium text-brand hover:underline">
+        <a href="/register" className="fw-bold text-primary">
           Create one
         </a>
       </p>
