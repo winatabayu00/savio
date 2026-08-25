@@ -149,6 +149,39 @@ func (r *Repository) Delete(ctx context.Context, workspaceID, id uuid.UUID) erro
 	return nil
 }
 
+// ActiveBalanceMap returns the derived balance for every ACTIVE account across
+// workspaces: opening balance + posted ledger effects (transactions +
+// transfers), matching PostBalanceModifiers. Used by the worker sweep so
+// notifications use the same authoritative math as the finance engine.
+func (r *Repository) ActiveBalanceMap(ctx context.Context) (map[uuid.UUID]int64, error) {
+	out := map[uuid.UUID]int64{}
+	var rows []struct {
+		AccountID uuid.UUID
+		Balance   int64
+	}
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT a.id AS account_id,
+		       a.opening_balance
+		       + COALESCE(tx.sum, 0)
+		       - COALESCE(fr.sum, 0)
+		       + COALESCE(toe.sum, 0) AS balance
+		FROM accounts a
+		LEFT JOIN (SELECT account_id, SUM(CASE WHEN type = 'EXPENSE' THEN -amount ELSE amount END) AS sum
+			FROM transactions WHERE status = 'POSTED' GROUP BY account_id) tx ON tx.account_id = a.id
+		LEFT JOIN (SELECT from_account_id, SUM(amount) AS sum
+			FROM account_transfers WHERE status = 'POSTED' GROUP BY from_account_id) fr ON fr.from_account_id = a.id
+		LEFT JOIN (SELECT to_account_id, SUM(amount) AS sum
+			FROM account_transfers WHERE status = 'POSTED' GROUP BY to_account_id) toe ON toe.to_account_id = a.id
+		WHERE a.status = 'ACTIVE'`).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		out[rows[i].AccountID] = rows[i].Balance
+	}
+	return out, nil
+}
+
 // PostBalanceModifiers computes per-account posted ledger effects keyed by
 // account ID. Empty until the ledger tables exist (M08+) and derived balance
 // becomes opening + modifiers (INV-005).

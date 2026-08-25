@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"github.com/savio/savio/backend/internal/accounts"
+	"github.com/savio/savio/backend/internal/budgets"
 	"github.com/savio/savio/backend/internal/recurring"
 )
 
@@ -45,82 +47,102 @@ func (s *Service) SweepNotifications(ctx context.Context, now time.Time) error {
 	return nil
 }
 
-func sweepLowBalance(ctx context.Context, db *gorm.DB, now time.Time) {
-	type row struct {
-		WorkspaceID uuid.UUID
-		UserID      uuid.UUID
-		Name        string
-		Balance     int64
-	}
-	var rows []row
+// ownerRow is a workspace OWNER with their notification-relevant settings.
+type ownerRow struct {
+	UserID      uuid.UUID
+	WorkspaceID uuid.UUID
+	BudgetPct   float64
+	LowBalance  *int64
+}
+
+// owners loads ACTIVE OWNER memberships joined to their settings so sweeps
+// notify the right users with the right thresholds.
+func owners(ctx context.Context, db *gorm.DB) ([]ownerRow, error) {
+	var rows []ownerRow
 	err := db.WithContext(ctx).Raw(`
-		SELECT a.workspace_id, u.id AS user_id,
-		       COALESCE(a.name, '') AS name,
-		       a.opening_balance
-			+ COALESCE((SELECT SUM(CASE WHEN t.type='EXPENSE' THEN -t.amount ELSE t.amount END)
-				FROM transactions t WHERE t.workspace_id = a.workspace_id AND t.status='POSTED'), 0) AS balance
-		FROM accounts a
-		JOIN workspace_memberships m ON m.workspace_id = a.workspace_id AND m.status = 'ACTIVE' AND m.role = 'OWNER'
+		SELECT m.workspace_id, u.id AS user_id,
+		       COALESCE(us.budget_warning_threshold, 80) AS budget_pct,
+		       us.low_balance_threshold AS low_balance
+		FROM workspace_memberships m
 		JOIN users u ON u.id = m.user_id
-		JOIN user_settings us ON us.user_id = u.id
-		WHERE a.status = 'ACTIVE' AND us.low_balance_threshold IS NOT NULL
-		  AND a.opening_balance
-			+ COALESCE((SELECT SUM(CASE WHEN t.type='EXPENSE' THEN -t.amount ELSE t.amount END)
-				FROM transactions t WHERE t.workspace_id = a.workspace_id AND t.status='POSTED'), 0) <= us.low_balance_threshold
-	`).Scan(&rows).Error
+		LEFT JOIN user_settings us ON us.user_id = u.id
+		WHERE m.status = 'ACTIVE' AND m.role = 'OWNER'`).Scan(&rows).Error
+	return rows, err
+}
+
+func sweepLowBalance(ctx context.Context, db *gorm.DB, now time.Time) {
+	balances, err := accounts.NewRepository(db).ActiveBalanceMap(ctx)
 	if err != nil {
 		slog.Warn("worker: low balance sweep", "error", err)
 		return
 	}
+	type acct struct {
+		ID          uuid.UUID
+		WorkspaceID uuid.UUID
+		Name        string
+	}
+	var accts []acct
+	if err := db.WithContext(ctx).Raw(`
+		SELECT id, workspace_id, COALESCE(name, '') AS name
+		FROM accounts WHERE status = 'ACTIVE'`).Scan(&accts).Error; err != nil {
+		slog.Warn("worker: low balance sweep accounts", "error", err)
+		return
+	}
+	owners, err := owners(ctx, db)
+	if err != nil {
+		slog.Warn("worker: low balance sweep owners", "error", err)
+		return
+	}
 	nowStr := now.Format("2006-01-02")
-	for _, r := range rows {
-		notify(ctx, db, r.WorkspaceID, r.UserID, "LOW_BALANCE", "Account balance is low",
-			"Your account balance is at or below your low-balance threshold.", nowStr)
+	for _, a := range accts {
+		bal, ok := balances[a.ID]
+		if !ok {
+			continue
+		}
+		for _, o := range owners {
+			if o.WorkspaceID != a.WorkspaceID || o.LowBalance == nil {
+				continue
+			}
+			if bal <= *o.LowBalance {
+				notify(ctx, db, a.WorkspaceID, o.UserID, "LOW_BALANCE", "Account balance is low",
+					"Your account balance is at or below your low-balance threshold.", nowStr)
+			}
+		}
 	}
 }
 
 func sweepBudgetWarnings(ctx context.Context, db *gorm.DB, now time.Time) {
-	type row struct {
-		WorkspaceID uuid.UUID
-		UserID      uuid.UUID
-		Category    string
-		Status      string
-		Pct         float64
-	}
-	var rows []row
-	err := db.WithContext(ctx).Raw(`
-		SELECT b.workspace_id, m.user_id AS user_id, c.name AS category,
-		       CASE WHEN b.amount > 0 AND COALESCE(sp.spent,0) * 100.0 / b.amount >= 100 THEN 'EXCEEDED'
-		            WHEN b.amount > 0 AND COALESCE(sp.spent,0) * 100.0 / b.amount >= us.budget_warning_threshold THEN 'WARNING'
-		            ELSE 'ON_TRACK' END AS status,
-		       COALESCE(sp.spent,0) * 100.0 / NULLIF(b.amount,0) AS pct
-		FROM budgets b
-		JOIN categories c ON c.id = b.category_id
-		JOIN workspace_memberships m ON m.workspace_id = b.workspace_id AND m.status='ACTIVE' AND m.role='OWNER'
-		JOIN users u ON u.id = m.user_id
-		JOIN user_settings us ON us.user_id = u.id
-		LEFT JOIN (
-			SELECT category_id, SUM(amount) AS spent FROM transactions
-			WHERE status='POSTED' AND type='EXPENSE' GROUP BY category_id
-		) sp ON sp.category_id = b.category_id
-		WHERE b.status='ACTIVE' AND (b.period_start <= CURRENT_DATE AND b.period_end >= CURRENT_DATE)
-	`).Scan(&rows).Error
+	due, err := budgets.NewRepository(db).ActiveDue(ctx, now)
 	if err != nil {
 		slog.Warn("worker: budget sweep", "error", err)
 		return
 	}
+	owners, err := owners(ctx, db)
+	if err != nil {
+		slog.Warn("worker: budget sweep owners", "error", err)
+		return
+	}
 	nowStr := now.Format("2006-01-02")
-	for _, r := range rows {
-		if r.Status == "ON_TRACK" {
-			continue
+	for _, b := range due {
+		for _, o := range owners {
+			if o.WorkspaceID != b.WorkspaceID {
+				continue
+			}
+			pct := 0.0
+			if b.Amount > 0 {
+				pct = (float64(b.Spent) / float64(b.Amount)) * 100
+			}
+			if pct < o.BudgetPct {
+				continue
+			}
+			typ := "BUDGET_WARNING"
+			if pct >= 100 {
+				typ = "BUDGET_EXCEEDED"
+			}
+			notify(ctx, db, b.WorkspaceID, o.UserID, typ,
+				"Budget "+b.CategoryName+" needs attention",
+				"Spending is at "+strconv.FormatFloat(pct, 'f', 1, 64)+"% of the "+b.CategoryName+" budget.", nowStr)
 		}
-		typ := "BUDGET_WARNING"
-		if r.Status == "EXCEEDED" {
-			typ = "BUDGET_EXCEEDED"
-		}
-		notify(ctx, db, r.WorkspaceID, r.UserID, typ,
-			"Budget "+r.Category+" needs attention",
-			"Spending is at "+strconv.FormatFloat(r.Pct, 'f', 1, 64)+"% of the "+r.Category+" budget.", nowStr)
 	}
 }
 

@@ -83,8 +83,8 @@ func (r *Repository) Update(ctx context.Context, b *Budget) error {
 	res := r.db.WithContext(ctx).Model(&Budget{}).
 		Where("id = ? AND workspace_id = ? AND status = 'ACTIVE' AND version = ?", b.ID, b.WorkspaceID, b.Version).
 		Updates(map[string]any{
-			"category_id": b.CategoryID,
-			"amount":      b.Amount,
+			"category_id":  b.CategoryID,
+			"amount":       b.Amount,
 			"period_start": b.PeriodStart,
 			"period_end":   b.PeriodEnd,
 			"version":      gorm.Expr("version + 1"),
@@ -123,6 +123,36 @@ func (r *Repository) spent(ctx context.Context, workspaceID, categoryID uuid.UUI
 		workspaceID, categoryID, from.Format("2006-01-02"), to.Format("2006-01-02")).
 		Scan(&total).Error
 	return total, err
+}
+
+// BudgetDue is an active in-period budget with its workspace-and-period-scoped
+// posted EXPENSE spend, used by the worker notification sweep (AGENTS #102:
+// the worker reuses repository logic instead of re-deriving it).
+type BudgetDue struct {
+	ID           uuid.UUID
+	WorkspaceID  uuid.UUID
+	CategoryID   uuid.UUID
+	CategoryName string
+	Amount       int64
+	Spent        int64
+}
+
+// ActiveDue lists active budgets whose period includes now, with spend scoped
+// to the budget's own workspace and period (fix: the previous worker sweep
+// summed all-time, cross-workspace spend on shared system categories).
+func (r *Repository) ActiveDue(ctx context.Context, now time.Time) ([]BudgetDue, error) {
+	var rows []BudgetDue
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT b.id, b.workspace_id, b.category_id, COALESCE(c.name, '') AS category_name, b.amount,
+		       COALESCE((SELECT SUM(t.amount) FROM transactions t
+		           WHERE t.workspace_id = b.workspace_id AND t.status = 'POSTED'
+		             AND t.type = 'EXPENSE' AND t.category_id = b.category_id
+		             AND t.transaction_date BETWEEN b.period_start AND b.period_end), 0) AS spent
+		FROM budgets b
+		LEFT JOIN categories c ON c.id = b.category_id
+		WHERE b.status = 'ACTIVE' AND b.period_start <= $1 AND b.period_end >= $1`,
+		now.Format("2006-01-02")).Scan(&rows).Error
+	return rows, err
 }
 
 // ActiveForCategoryWithin checks for an overlapping active budget on the same
