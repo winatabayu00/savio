@@ -1,0 +1,55 @@
+// Duralux design system (vendored bootstrap + theme layers), imported wholesale.
+//
+// ponytail: kept full so overrides track the template exactly; unused app/plugin
+// styles still compile but are inert. Trim later only if the CSS payload matters.
+@import "./duralux/theme.scss";
+
+// ponytail: template relies on react-perfect-scrollbar for the nav; plain
+// overflow keeps it usable without the extra dependency.
+.nxl-navigation .navbar-content {
+  overflow-y: auto;
+}
+
+html:not(.minimenu) .nxl-navigation .navbar-content {
+  height: calc(100vh - 79px);
+}
+
+// ponytail: template leaves the footer floating right under content; flex column
+// pins it to the viewport bottom on short pages.
+.nxl-container,
+.nxl-container .nxl-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.nxl-container .nxl-content {
+  flex: 1 1 auto;
+}
+
+.nxl-container .nxl-content .main-content {
+  flex: 1 1 auto;
+}
+
+.nxl-container .footer {
+  margin-top: auto;
+}
+
+// ponytail: template uses <img> avatars; we render text initials instead.
+.nxl-header .user-avtar.user-avtar-text,
+.dropdown-header .user-avtar.user-avtar-text {
+  width: 40px;
+  height: 40px;
+  margin-right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: $primary;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nxl-head-link .user-avtar.user-avtar-text {
+  margin-right: 0;
+}
