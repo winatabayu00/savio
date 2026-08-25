@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { server, AUTH_BASE, csrfHandler } from '../mocks/handlers';
 import { api } from '@/shared/api/client';
 import { CopilotPage } from '@/features/copilot/pages/copilot-page';
-import { useSpeechRecognition, useSpeechSynthesis } from '@/features/ai/hooks/use-voice';
+import { useSpeechRecognition, useSpeechSynthesis, numberToWordsID } from '@/features/ai/hooks/use-voice';
 
 api.defaults.baseURL = AUTH_BASE;
 
@@ -124,6 +124,17 @@ describe('useSpeechRecognition', () => {
   });
 });
 
+describe('numberToWordsID', () => {
+  it('expands integers to Indonesian words', () => {
+    expect(numberToWordsID('saldo 10000')).toBe('saldo sepuluh ribu');
+    expect(numberToWordsID('Pengeluaranmu naik 12%.')).toBe('Pengeluaranmu naik dua belas%.');
+    expect(numberToWordsID('total 12.000.000 hari ini')).toBe('total dua belas juta hari ini');
+    expect(numberToWordsID('grab food 28500')).toBe('grab food dua puluh delapan ribu lima ratus');
+    expect(numberToWordsID('Rp1.000,50')).toBe('rupiah seribu');
+    expect(numberToWordsID('nol 0 persen')).toBe('nol nol persen');
+  });
+});
+
 describe('useSpeechSynthesis', () => {
   it('no-ops without tts support', () => {
     const { result } = renderHook(() => useSpeechSynthesis());
@@ -220,7 +231,7 @@ describe('Copilot talk mode', () => {
 
     fireFinal('seberapa besar pengeluaran bulan ini');
     await waitFor(() => expect(screen.getByText('Pengeluaranmu naik 12%.')).toBeInTheDocument());
-    expect(speakMock).toHaveBeenCalledWith(expect.objectContaining({ text: 'Pengeluaranmu naik 12%.' }));
+    expect(speakMock).toHaveBeenCalledWith(expect.objectContaining({ text: 'Pengeluaranmu naik dua belas%.' }));
   });
 
   it('replays the answer when Listen is clicked', async () => {
@@ -242,6 +253,6 @@ describe('Copilot talk mode', () => {
     expect(speakMock).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole('button', { name: 'Read answer aloud' }));
-    expect(speakMock).toHaveBeenCalledWith(expect.objectContaining({ text: 'Pengeluaranmu naik 12%.' }));
+    expect(speakMock).toHaveBeenCalledWith(expect.objectContaining({ text: 'Pengeluaranmu naik dua belas%.' }));
   });
 });
