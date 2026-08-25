@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	demoEmail    = "demo@savio.test"
-	demoPassword = "DemoPassword!23"
+	demoEmail    = "user@user.com"
+	demoPassword = "password"
 )
 
 // SeedDemo creates a demo user + workspace and a coherent ~4 month finance
