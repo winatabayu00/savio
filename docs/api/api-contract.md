@@ -3010,9 +3010,21 @@ POST /api/v1/ai/insights/:id/feedback
 
 POST /api/v1/ai/copilot
 POST /api/v1/ai/explain-scenario
+
+GET  /api/v1/ai/status
+POST /api/v1/ai/categorize
+POST /api/v1/ai/insight
+
+GET  /api/v1/ai/config          (OWNER only)
+PATCH /api/v1/ai/config         (OWNER only)
 ```
 
 Automatic insight generation may run through background jobs rather than public HTTP endpoints.
+
+Runtime AI configuration replaces the `AI_*` environment variables. It is stored in a
+database singleton row (`ai_settings`), seeded once from env on first startup. Changes
+take effect immediately without a restart. The API key is never returned in full; only a
+masked suffix (`api_key_masked`) is exposed.
 
 ---
 
@@ -3050,6 +3062,60 @@ Response:
 ```
 
 This endpoint does not create or modify a transaction.
+
+---
+
+# 92a. AI Configuration
+
+```http
+GET /api/v1/ai/config
+```
+
+Authentication: authenticated. Authorization: workspace OWNER.
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "enabled": true,
+    "provider": "openai",
+    "base_url": "https://api.openai.com/v1",
+    "api_key_masked": "••••1234",
+    "model": "gpt-4o-mini",
+    "timeout_seconds": 20
+  }
+}
+```
+
+```http
+PATCH /api/v1/ai/config
+```
+
+Partial update; omitted fields keep their current value. An empty/missing `api_key`
+preserves the stored key. `provider` is one of `openai` | `mock`; empty `base_url`
+with provider `mock` uses the built-in offline mock provider.
+
+Request:
+
+```json
+{
+  "enabled": true,
+  "provider": "openai",
+  "base_url": "https://api.openai.com/v1",
+  "api_key": "sk-...",
+  "model": "gpt-4o-mini",
+  "timeout_seconds": 20
+}
+```
+
+Errors:
+
+```text
+400 VALIDATION_ERROR        invalid provider / base_url / model / timeout_seconds
+403 PERMISSION_DENIED       user is not a workspace OWNER
+```
 
 ---
 

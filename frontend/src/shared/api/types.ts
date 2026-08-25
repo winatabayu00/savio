@@ -21,6 +21,24 @@ export interface UserSettings {
   low_balance_threshold: number | null;
 }
 
+export interface AIConfig {
+  enabled: boolean;
+  provider: string;
+  base_url: string;
+  api_key_masked: string;
+  model: string;
+  timeout_seconds: number;
+}
+
+export interface AIConfigInput {
+  enabled?: boolean;
+  provider?: string;
+  base_url?: string;
+  api_key?: string;
+  model?: string;
+  timeout_seconds?: number;
+}
+
 export interface AuthState {
   user: User;
   workspace: Workspace;

@@ -10,9 +10,9 @@ import (
 
 	"github.com/google/uuid"
 
+	platformai "github.com/savio/savio/backend/internal/platform/ai"
 	"github.com/savio/savio/backend/internal/platform/errs"
 	"github.com/savio/savio/backend/internal/platform/money"
-	platformai "github.com/savio/savio/backend/internal/platform/ai"
 )
 
 type Fact struct {

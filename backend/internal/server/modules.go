@@ -73,6 +73,11 @@ func registerAIRoutes(api *gin.RouterGroup, a *App) {
 	g := api.Group("/ai")
 	g.Use(auth.AuthRequired(a.DB, a.Config))
 	ai2.RegisterRoutes(g, h)
+	// Runtime AI configuration lives on the Settings page and is owner-gated.
+	cfg := g.Group("/config")
+	cfg.Use(auth.RequireOwner())
+	cfg.GET("", h.GetConfig)
+	cfg.PATCH("", h.UpdateConfig)
 }
 
 func registerScenarioRoutes(api *gin.RouterGroup, a *App) {

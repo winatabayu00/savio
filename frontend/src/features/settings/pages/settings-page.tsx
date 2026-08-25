@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/app/providers/auth-provider';
+import { getAIConfig, updateAIConfig } from '@/features/settings/api/ai-config.api';
 import { updateSettings } from '@/features/settings/api/settings.api';
-import type { UserSettings } from '@/shared/api/types';
+import type { AIConfigInput, UserSettings } from '@/shared/api/types';
 
 export function SettingsPage() {
   const { auth, refresh } = useAuth();
@@ -130,6 +131,165 @@ export function SettingsPage() {
           Simpan Perubahan
         </button>
       </section>
+
+      <AiConfigSection canEdit={role === 'OWNER'} />
     </div>
+  );
+}
+
+function AiConfigSection({ canEdit }: { canEdit: boolean }) {
+  const aiConfig = useQuery({
+    queryKey: ['ai-config'],
+    queryFn: getAIConfig,
+    enabled: canEdit,
+  });
+
+  const saveConfig = useMutation({
+    mutationFn: (input: AIConfigInput) => updateAIConfig(input),
+    onSuccess: () => {
+      void aiConfig.refetch();
+      setDraft(null);
+    },
+  });
+
+  const ai = aiConfig.data;
+  const [draft, setDraft] = useState<AIConfigInput | null>(null);
+
+  const update = (patch: AIConfigInput) =>
+    setDraft((d) => (ai ? { ...d, ...patch } : d));
+
+  const f = ai ? { ...ai, ...draft } : null;
+  if (!f) {
+    if (aiConfig.isPending || !canEdit) return null;
+    return <p className="text-sm text-red-600">Gagal memuat konfigurasi AI.</p>;
+  }
+
+  const dirty =
+    !!draft &&
+    (draft.enabled !== undefined || draft.provider !== undefined ||
+      draft.base_url !== undefined || draft.model !== undefined ||
+      draft.timeout_seconds !== undefined || (draft.api_key ?? '') !== '');
+
+  const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+    <input
+      {...props}
+      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+    />
+  );
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-6">
+      <h2 className="mb-1 text-base font-semibold text-gray-900">Kecerdasan Buatan (AI)</h2>
+      <p className="mb-4 text-sm text-gray-500">
+        Konfigurasi penyedia AI. Simpan di sini menggantikan pengaturan via variabel lingkungan (ENV).
+      </p>
+
+      {!canEdit && (
+        <p className="mb-4 text-sm text-gray-500">
+          Hanya pemilik ruang kerja yang dapat mengubah konfigurasi AI.
+        </p>
+      )}
+
+      <label className="flex items-center justify-between py-2">
+        <span className="text-sm text-gray-700">Aktifkan AI</span>
+        <input
+          type="checkbox"
+          checked={f.enabled}
+          onChange={(e) => update({ enabled: e.target.checked })}
+          className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+        />
+      </label>
+
+      <div className="mt-2">
+        <label htmlFor="ai_provider" className="text-sm text-gray-700">
+          Penyedia
+        </label>
+        <select
+          id="ai_provider"
+          value={f.provider === 'mock' ? 'mock' : 'openai'}
+          onChange={(e) => update({ provider: e.target.value })}
+          disabled={!canEdit}
+          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+        >
+          <option value="openai">OpenAI-compatible (OpenAI, Groq, Ollama...)</option>
+          <option value="mock">Mock (uji coba offline)</option>
+        </select>
+      </div>
+
+      <div className="mt-3">
+        <label htmlFor="ai_base_url" className="text-sm text-gray-700">
+          Base URL API
+        </label>
+        <Input
+          id="ai_base_url"
+          value={f.base_url}
+          onChange={(e) => update({ base_url: e.target.value })}
+          placeholder="https://api.openai.com/v1"
+          disabled={!canEdit}
+        />
+      </div>
+
+      <div className="mt-3">
+        <label htmlFor="ai_api_key" className="text-sm text-gray-700">
+          API Key
+        </label>
+        <Input
+          id="ai_api_key"
+          type="password"
+          value={draft?.api_key ?? ''}
+          onChange={(e) => update({ api_key: e.target.value })}
+          placeholder={f.api_key_masked || 'Belum diatur'}
+          autoComplete="new-password"
+          disabled={!canEdit}
+        />
+        <p className="mt-1 text-xs text-gray-400">
+          Kunci tersimpan memiliki: {f.api_key_masked || '—'}. Kosongkan untuk mempertahankan kunci yang ada.
+        </p>
+      </div>
+
+      <div className="mt-3">
+        <label htmlFor="ai_model" className="text-sm text-gray-700">
+          Model
+        </label>
+        <Input
+          id="ai_model"
+          value={f.model}
+          onChange={(e) => update({ model: e.target.value })}
+          placeholder="gpt-4o-mini"
+          disabled={!canEdit}
+        />
+      </div>
+
+      <div className="mt-3">
+        <label htmlFor="ai_timeout" className="text-sm text-gray-700">
+          Timeout (detik)
+        </label>
+        <Input
+          id="ai_timeout"
+          type="number"
+          min={1}
+          max={120}
+          value={f.timeout_seconds}
+          onChange={(e) => update({ timeout_seconds: Number(e.target.value) })}
+          disabled={!canEdit}
+        />
+      </div>
+
+      {saveConfig.isError && (
+        <p className="mt-3 text-sm text-red-600">Gagal menyimpan konfigurasi AI. Silakan coba lagi.</p>
+      )}
+      {saveConfig.isPending && <p className="mt-3 text-sm text-gray-500">Menyimpan…</p>}
+
+      {canEdit && (
+        <button
+          type="button"
+          disabled={!dirty || saveConfig.isPending}
+          onClick={() => saveConfig.mutate(draft ?? {})}
+          className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Simpan Konfigurasi AI
+        </button>
+      )}
+    </section>
   );
 }

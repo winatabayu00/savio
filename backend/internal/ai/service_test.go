@@ -22,6 +22,7 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/savio/savio/backend/internal/ai"
+	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/migrations"
 	"github.com/savio/savio/backend/internal/platform/authctx"
 	"github.com/savio/savio/backend/internal/platform/config"
@@ -117,6 +118,7 @@ func fixture(t *testing.T) (uuid.UUID, uuid.UUID) {
 		db.Exec(`DELETE FROM workspace_memberships WHERE workspace_id = $1`, wsID)
 		db.Exec(`DELETE FROM workspaces WHERE id = $1`, wsID)
 		db.Exec(`DELETE FROM users WHERE id = $1`, owner)
+		db.Exec(`DELETE FROM ai_settings`)
 	})
 	return wsID, owner
 }
@@ -141,6 +143,10 @@ func newRouter(t *testing.T, wsID uuid.UUID, h *ai.Handler) *gin.Engine {
 	}
 	g := r.Group("/api/v1/ai", authMW)
 	ai.RegisterRoutes(g, h)
+	cfg := g.Group("/config")
+	cfg.Use(auth.RequireOwner())
+	cfg.GET("", h.GetConfig)
+	cfg.PATCH("", h.UpdateConfig)
 	return r
 }
 
@@ -171,12 +177,12 @@ func decodeBody(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
 
 func testCfg(enabled bool) *config.Config {
 	return &config.Config{
-		AIEnabled:     enabled,
-		AIProvider:    "mock",
-		AITimeout:     time.Second * 5,
-		AIModel:       "test-model",
-		AIBaseURL:     "",
-		AIAPIKey:      "",
+		AIEnabled:  enabled,
+		AIProvider: "mock",
+		AITimeout:  time.Second * 5,
+		AIModel:    "test-model",
+		AIBaseURL:  "",
+		AIAPIKey:   "",
 	}
 }
 

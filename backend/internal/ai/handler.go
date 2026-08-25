@@ -2,6 +2,8 @@ package ai
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +16,7 @@ import (
 )
 
 type Handler struct {
-	svc         *Service
+	svc           *Service
 	categorizeLim *ratelimit.Limiter
 	insightLim    *ratelimit.Limiter
 	copilotLim    *ratelimit.Limiter
@@ -35,14 +37,18 @@ func (h *Handler) Status(c *gin.Context) {
 		httpx.Fail(c, err)
 		return
 	}
-	enabled := h.svc.Enabled()
+	enabled, err := h.svc.enabled(c.Request.Context())
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
 	state := "enabled"
 	if !enabled {
 		state = "disabled"
 	}
 	httpx.Success(c, http.StatusOK, gin.H{
-		"enabled": enabled,
-		"state":   state,
+		"enabled":      enabled,
+		"state":        state,
 		"workspace_id": x.WorkspaceID.String(),
 	})
 }
@@ -80,10 +86,10 @@ func (h *Handler) Categorize(c *gin.Context) {
 }
 
 type insightReq struct {
-	From    string `json:"from"`
-	To      string `json:"to"`
+	From     string `json:"from"`
+	To       string `json:"to"`
 	PrevFrom string `json:"compare_from"`
-	PrevTo  string `json:"compare_to"`
+	PrevTo   string `json:"compare_to"`
 }
 
 func (h *Handler) Insight(c *gin.Context) {
@@ -158,4 +164,108 @@ func RegisterRoutes(g *gin.RouterGroup, h *Handler) {
 	g.POST("/categorize", h.Categorize)
 	g.POST("/insight", h.Insight)
 	g.POST("/copilot", h.Copilot)
+}
+
+// configResponse never exposes the raw API key.
+type configResponse struct {
+	Enabled        bool   `json:"enabled"`
+	Provider       string `json:"provider"`
+	BaseURL        string `json:"base_url"`
+	APIKeyMasked   string `json:"api_key_masked"`
+	Model          string `json:"model"`
+	TimeoutSeconds int    `json:"timeout_seconds"`
+}
+
+func maskKey(k string) string {
+	if k == "" {
+		return ""
+	}
+	if len(k) <= 4 {
+		return "••••"
+	}
+	return "••••" + k[len(k)-4:]
+}
+
+func toConfigResponse(st *Settings) configResponse {
+	return configResponse{
+		Enabled:        st.Enabled,
+		Provider:       st.Provider,
+		BaseURL:        st.BaseURL,
+		APIKeyMasked:   maskKey(st.APIKey),
+		Model:          st.Model,
+		TimeoutSeconds: st.TimeoutSeconds,
+	}
+}
+
+func (h *Handler) GetConfig(c *gin.Context) {
+	st, err := h.svc.Settings(c.Request.Context())
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, toConfigResponse(st))
+}
+
+type updateConfigReq struct {
+	Enabled        *bool   `json:"enabled"`
+	Provider       *string `json:"provider"`
+	BaseURL        *string `json:"base_url"`
+	APIKey         *string `json:"api_key"`
+	Model          *string `json:"model"`
+	TimeoutSeconds *int    `json:"timeout_seconds"`
+}
+
+func (h *Handler) UpdateConfig(c *gin.Context) {
+	var req updateConfigReq
+	if err := httpx.Bind(c, &req); err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	if err := validateConfigReq(&req); err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	in := &UpdateSettingsInput{
+		Enabled:        req.Enabled,
+		Provider:       req.Provider,
+		BaseURL:        req.BaseURL,
+		APIKey:         req.APIKey,
+		Model:          req.Model,
+		TimeoutSeconds: req.TimeoutSeconds,
+	}
+	st, err := h.svc.UpdateSettings(c.Request.Context(), in)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, toConfigResponse(st))
+}
+
+func validateConfigReq(req *updateConfigReq) error {
+	fields := map[string]string{}
+	if req.Provider != nil {
+		p := strings.TrimSpace(*req.Provider)
+		if p != "openai" && p != "mock" {
+			fields["provider"] = "provider must be 'openai' or 'mock'"
+		}
+	}
+	if req.TimeoutSeconds != nil && (*req.TimeoutSeconds < 1 || *req.TimeoutSeconds > 120) {
+		fields["timeout_seconds"] = "timeout_seconds must be between 1 and 120"
+	}
+	if req.BaseURL != nil {
+		b := strings.TrimSpace(*req.BaseURL)
+		if b != "" {
+			u, err := url.ParseRequestURI(b)
+			if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+				fields["base_url"] = "base_url must be a valid http(s) URL"
+			}
+		}
+	}
+	if req.Model != nil && strings.TrimSpace(*req.Model) == "" {
+		fields["model"] = "model is required"
+	}
+	if len(fields) > 0 {
+		return errs.ValidationFields(fields)
+	}
+	return nil
 }

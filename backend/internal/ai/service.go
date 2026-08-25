@@ -20,24 +20,38 @@ import (
 
 type Service struct {
 	cfg       *config.Config
-	provider  ai.Provider
 	analytics *analytics.Service
 	db        *gorm.DB
 }
 
 func NewService(db *gorm.DB, cfg *config.Config) *Service {
-	provider := ai.NewProviderFromConfig(cfg)
-	return &Service{cfg: cfg, provider: provider, analytics: analytics.NewService(db), db: db}
+	// Seed the singleton row from env defaults once so the Settings page can
+	// take over as the source of truth (AGENTS: config replacement, #79).
+	_ = seedSettings(db, cfg)
+	return &Service{cfg: cfg, analytics: analytics.NewService(db), db: db}
 }
 
-// Enabled reports whether AI endpoints answer or degrade.
-func (s *Service) Enabled() bool { return s.cfg.AIEnabled }
+// enabled reports whether AI endpoints answer or degrade, from runtime settings.
+func (s *Service) enabled(ctx context.Context) (bool, error) {
+	st, err := s.loadSettings(ctx)
+	if err != nil {
+		return false, err
+	}
+	return st.Enabled, nil
+}
 
+// complete builds the provider from current runtime settings on every call, so
+// AI configuration changes take effect immediately without a restart.
 func (s *Service) complete(ctx context.Context, system, prompt string) (map[string]any, error) {
-	if !s.Enabled() {
+	st, err := s.loadSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !st.Enabled {
 		return nil, errs.AIUnavailable("AI is disabled for this installation")
 	}
-	out, err := s.provider.Complete(ctx, system, prompt)
+	provider := ai.NewProvider(settingsAdapter{st: st})
+	out, err := provider.Complete(ctx, system, prompt)
 	if err != nil {
 		return nil, errs.AIUnavailable("The AI provider is currently unavailable. Try again shortly.")
 	}
@@ -136,8 +150,8 @@ func (s *Service) Insight(ctx context.Context, workspaceID uuid.UUID, from, to, 
 }
 
 func (s *Service) forecastService() *forecast.Service { return forecast.NewService(s.db) }
-func (s *Service) budgetService() *budgets.Service     { return budgets.NewService(s.db) }
-func (s *Service) goalService() *goals.Service         { return goals.NewService(s.db) }
+func (s *Service) budgetService() *budgets.Service    { return budgets.NewService(s.db) }
+func (s *Service) goalService() *goals.Service        { return goals.NewService(s.db) }
 
 func (s *Service) workspaceExpenseCategories(ctx context.Context, workspaceID uuid.UUID) ([]string, error) {
 	var names []string
