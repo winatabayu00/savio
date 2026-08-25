@@ -14,9 +14,11 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', onKey);
+    document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
+      document.body.classList.remove('modal-open');
       document.body.style.overflow = '';
     };
   }, [open, onClose]);
@@ -24,29 +26,21 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="modal fade show d-block"
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-        <div className="flex items-start justify-between">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-          >
-            ×
-          </button>
+      <div className="modal-backdrop fade show" onClick={onClose} aria-hidden="true" />
+      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">{title}</h5>
+            <button type="button" className="btn-close" onClick={onClose} aria-label="Close" />
+          </div>
+          <div className="modal-body">{children}</div>
         </div>
-        <div className="mt-4">{children}</div>
       </div>
     </div>
   );

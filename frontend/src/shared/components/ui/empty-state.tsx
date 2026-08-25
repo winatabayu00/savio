@@ -2,10 +2,12 @@ import type { ReactNode } from 'react';
 
 export function EmptyState({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
-      <p className="text-sm font-medium text-gray-700">{title}</p>
-      {description ? <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">{description}</p> : null}
-      {action ? <div className="mt-4">{action}</div> : null}
+    <div className="card text-center border-dashed">
+      <div className="card-body py-5">
+        <p className="fs-14 fw-medium text-muted">{title}</p>
+        {description ? <p className="fs-13 text-muted mt-1 mb-0">{description}</p> : null}
+        {action ? <div className="mt-3">{action}</div> : null}
+      </div>
     </div>
   );
 }
