@@ -234,6 +234,10 @@ func (s *Service) AddModification(ctx context.Context, workspaceID, userID uuid.
 	if in.Amount <= 0 {
 		return nil, errs.ValidationFields(map[string]string{"amount": "amount must be positive"})
 	}
+	sn, err := s.repo.FindScenario(ctx, workspaceID, scenarioID)
+	if err != nil {
+		return nil, err
+	}
 	mods, _ := s.repo.ListModifications(ctx, scenarioID)
 	m := &Modification{
 		ID: uuid.New(), ScenarioID: scenarioID, Type: in.Type, Amount: in.Amount,
@@ -251,11 +255,16 @@ func (s *Service) AddModification(ctx context.Context, workspaceID, userID uuid.
 		return nil, err
 	}
 	s.audit.Record(ctx, &workspaceID, &userID, "scenario.modification", "scenario_modification", &m.ID, nil)
+	s.invalidateResult(ctx, workspaceID, sn)
 	v := toModView(m)
 	return &v, nil
 }
 
 func (s *Service) UpdateModification(ctx context.Context, workspaceID, userID uuid.UUID, scenarioID, modID uuid.UUID, in *ModInput, version int64) (*ModView, error) {
+	sn, err := s.repo.FindScenario(ctx, workspaceID, scenarioID)
+	if err != nil {
+		return nil, err
+	}
 	m, err := s.repo.FindModification(ctx, scenarioID, modID)
 	if err != nil {
 		return nil, err
@@ -278,16 +287,29 @@ func (s *Service) UpdateModification(ctx context.Context, workspaceID, userID uu
 		return nil, err
 	}
 	s.audit.Record(ctx, &workspaceID, &userID, "scenario.modification", "scenario_modification", &m.ID, nil)
+	s.invalidateResult(ctx, workspaceID, sn)
 	v := toModView(m)
 	return &v, nil
 }
 
 func (s *Service) RemoveModification(ctx context.Context, workspaceID, userID uuid.UUID, scenarioID, modID uuid.UUID) error {
+	if _, err := s.repo.FindScenario(ctx, workspaceID, scenarioID); err != nil {
+		return err
+	}
 	if err := s.repo.DeleteModification(ctx, scenarioID, modID); err != nil {
 		return err
 	}
 	s.audit.Record(ctx, &workspaceID, &userID, "scenario.modification", "scenario_modification", &modID, nil)
 	return nil
+}
+
+// invalidateResult marks a calculated scenario stale when its inputs change.
+func (s *Service) invalidateResult(ctx context.Context, workspaceID uuid.UUID, sn *Scenario) {
+	if sn.Status != StatusCalculated || sn.IsStale {
+		return
+	}
+	sn.IsStale = true
+	_ = s.repo.UpdateScenario(ctx, sn)
 }
 
 func (s *Service) refreshStale(ctx context.Context, workspaceID uuid.UUID, sn *Scenario) error {

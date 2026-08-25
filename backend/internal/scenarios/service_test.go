@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 		dsn := v
 		testURL, err := url.Parse(dsn)
 		if err == nil {
-			testURL.Path = "/savio_test"
+			testURL.Path = "/savio_test_scenarios"
 			ensureTestDB(dsn, testURL.String())
 			os.Setenv("DATABASE_URL", testURL.String())
 		}
@@ -67,7 +67,7 @@ func ensureTestDB(adminDSN, testDSN string) {
 		return
 	}
 	defer c.Close()
-	_, _ = c.Exec(`CREATE DATABASE savio_test`)
+	_, _ = c.Exec(`CREATE DATABASE savio_test_scenarios`)
 	if err := migrateTestDB(testDSN); err != nil {
 		panic(err)
 	}
@@ -322,6 +322,90 @@ func TestScenarioStaleDetection(t *testing.T) {
 	}
 	if !v.IsStale {
 		t.Fatalf("expected scenario to be stale after finance change")
+	}
+}
+
+// TestScenarioModificationCrossWorkspaceRejected proves mod endpoints are
+// workspace-scoped: a scenario created in WS-A must not be modifiable (or
+// even recognizable) through WS-B. Regression for unscoped ID lookups in
+// Add/Update/RemoveModification.
+func TestScenarioModificationCrossWorkspaceRejected(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	f := fixture(t)
+	rA := newRouter(t, f.wsID, scenarios.NewHandler(scenarios.NewService(db)))
+
+	w := doReq(t, rA, "POST", "/api/v1/scenarios", f.owner.String(), `{"name":"Secret plan"}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", w.Code, w.Body.String())
+	}
+	scID := decodeBody(t, w)["data"].(map[string]any)["id"].(string)
+
+	// Second workspace + owner as the attacker.
+	wsB := uuid.New()
+	ownerB := uuid.New()
+	mustNil(t, db.Create(&workspaces.Workspace{ID: wsB, Name: "B", BaseCurrency: "IDR", Timezone: "Asia/Jakarta"}).Error)
+	mustNil(t, db.Create(&users.User{ID: ownerB, Name: "OB", Email: "ob-" + uuid.NewString()[:10] + "@savio.test",
+		PasswordHash: "x", Timezone: "Asia/Jakarta", DefaultCurrency: "IDR", Locale: "id-ID", Status: "ACTIVE"}).Error)
+	mustNil(t, db.Create(&workspaces.Membership{ID: uuid.New(), WorkspaceID: wsB, UserID: ownerB, Role: "OWNER", Status: "ACTIVE"}).Error)
+	acctB := uuid.New()
+	mustNil(t, db.Create(&accounts.Account{ID: acctB, WorkspaceID: wsB, Name: "B", Type: "CASH", Currency: "IDR",
+		OpeningBalance: 10000000, Status: "ACTIVE", Version: 1}).Error)
+	t.Cleanup(func() {
+		db.Exec(`DELETE FROM scenario_modifications WHERE scenario_id IN (SELECT id FROM scenarios WHERE workspace_id = $1)`, wsB)
+		db.Exec(`DELETE FROM scenarios WHERE workspace_id = $1`, wsB)
+		db.Exec(`DELETE FROM accounts WHERE id = $1`, acctB)
+		db.Exec(`DELETE FROM workspace_memberships WHERE workspace_id = $1`, wsB)
+		db.Exec(`DELETE FROM workspaces WHERE id = $1`, wsB)
+		db.Exec(`DELETE FROM users WHERE id = $1`, ownerB)
+	})
+	rB := newRouter(t, wsB, scenarios.NewHandler(scenarios.NewService(db)))
+
+	// Attacker tries to add a modification to WS-A's scenario through WS-B.
+	w = doReq(t, rB, "POST", "/api/v1/scenarios/"+scID+"/modifications", ownerB.String(),
+		`{"type":"ONE_TIME_EXPENSE","amount":"10000"}`)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("cross-workspace mod expected 404, got %d %s", w.Code, w.Body.String())
+	}
+	var modsA int64
+	db.Table("scenario_modifications").Where("scenario_id = ", scID).Count(&modsA)
+	if modsA != 0 {
+		t.Fatalf("mod leaked into WS-A scenario: %d rows", modsA)
+	}
+	// Get under WS-B must also 404 and reveal nothing about the scenario.
+	w = doReq(t, rB, "GET", "/api/v1/scenarios/"+scID, ownerB.String(), "")
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("cross-workspace get expected 404, got %d %s", w.Code, w.Body.String())
+	}
+}
+
+// TestScenarioModificationMarksResultStale proves editing a calculated
+// scenario invalidates its snapshot so stale projections are never presented
+// as current (INV-012 freshness).
+func TestScenarioModificationMarksResultStale(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	f := fixture(t)
+	svc := scenarios.NewService(db)
+	sc, err := svc.Create(t.Context(), f.wsID, f.owner, &scenarios.CreateInput{Name: "Stale mod"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, err := svc.Calculate(t.Context(), f.wsID, f.owner, sc.ID, 90, f.now); err != nil {
+		t.Fatalf("calculate: %v", err)
+	}
+	if _, err := svc.AddModification(t.Context(), f.wsID, f.owner, sc.ID,
+		&scenarios.ModInput{Type: "ONE_TIME_EXPENSE", Amount: 50000}); err != nil {
+		t.Fatalf("mod: %v", err)
+	}
+	v, err := svc.Get(t.Context(), f.wsID, sc.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if !v.IsStale {
+		t.Fatal("scenario must be stale after modification")
 	}
 }
 
