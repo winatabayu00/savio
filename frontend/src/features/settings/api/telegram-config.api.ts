@@ -10,3 +10,10 @@ export async function updateTelegramConfig(input: TelegramConfigInput): Promise<
   const { data } = await api.patch<SuccessEnvelope<TelegramConfig>>('/telegram/config', input);
   return data.data;
 }
+
+export async function registerTelegramWebhook(url: string): Promise<TelegramConfig> {
+  const { data } = await api.post<SuccessEnvelope<TelegramConfig>>('/telegram/config/register-webhook', {
+    webhook_url: url,
+  });
+  return data.data;
+}

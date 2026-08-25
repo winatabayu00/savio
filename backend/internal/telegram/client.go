@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -64,6 +65,29 @@ func (b *botClient) sendMessage(ctx context.Context, chatID, text string) error 
 		Ok bool `json:"ok"`
 	}
 	return b.do(ctx, "POST", u, body, &payload)
+}
+
+func (b *botClient) setWebhook(ctx context.Context, webhookURL string) error {
+	u := fmt.Sprintf("%s/bot%s/setWebhook?url=%s", b.rawURL, b.token, url.QueryEscape(webhookURL))
+	var payload struct {
+		Ok          bool   `json:"ok"`
+		Description string `json:"description"`
+	}
+	if err := b.do(ctx, "GET", u, nil, &payload); err != nil {
+		return err
+	}
+	if !payload.Ok {
+		return fmt.Errorf("telegram setWebhook: %s", payload.Description)
+	}
+	return nil
+}
+
+func (b *botClient) deleteWebhook(ctx context.Context) error {
+	u := fmt.Sprintf("%s/bot%s/deleteWebhook", b.rawURL, b.token)
+	var payload struct {
+		Ok bool `json:"ok"`
+	}
+	return b.do(ctx, "GET", u, nil, &payload)
 }
 
 func (b *botClient) do(ctx context.Context, method, u string, body any, out any) error {

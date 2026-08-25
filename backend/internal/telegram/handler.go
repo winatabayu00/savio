@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"strings"
 
@@ -23,6 +24,7 @@ type configResponse struct {
 	BotTokenMask string `json:"bot_token_masked"`
 	ChatID       string `json:"chat_id"`
 	WorkspaceID  string `json:"workspace_id"`
+	WebhookURL   string `json:"webhook_url"`
 }
 
 func maskToken(t string) string {
@@ -41,6 +43,7 @@ func toConfigResponse(st *Settings) configResponse {
 		BotTokenMask: maskToken(st.BotToken),
 		ChatID:       st.ChatID,
 		WorkspaceID:  st.WorkspaceID.String(),
+		WebhookURL:   st.fullWebhookURL(),
 	}
 }
 
@@ -116,4 +119,59 @@ func allDigits(s string) bool {
 		}
 	}
 	return true
+}
+
+type registerWebhookReq struct {
+	WebhookURL string `json:"webhook_url"`
+}
+
+// RegisterWebhook registers or removes the bot webhook (empty url removes).
+func (h *Handler) RegisterWebhook(c *gin.Context) {
+	x, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	var req registerWebhookReq
+	if err := httpx.Bind(c, &req); err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	st, err := h.svc.RegisterWebhook(c.Request.Context(), x.WorkspaceID, req.WebhookURL)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, toConfigResponse(st))
+}
+
+// HandleWebhook receives Telegram push updates (no session, no CSRF). The
+// secret in the URL path guards the route; the configured chat_id still
+// authorizes every message, and the telegram_processed constraint keeps exactly-
+// once even if Telegram retries.
+func (h *Handler) HandleWebhook(c *gin.Context) {
+	ctx := c.Request.Context()
+	st, err := h.svc.load(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"ok": false})
+		return
+	}
+	if st.WebhookSecret == "" || subtle.ConstantTimeCompare([]byte(st.WebhookSecret), []byte(c.Param("secret"))) != 1 {
+		c.JSON(http.StatusUnauthorized, gin.H{"ok": false})
+		return
+	}
+	var u Update
+	if err := c.ShouldBindJSON(&u); err != nil || (u.Message == nil && u.ID == 0) {
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+		return
+	}
+	if !h.svc.claim(ctx, u.ID) {
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+		return
+	}
+	client := newBotClient(st.BotToken)
+	if err := h.svc.Handle(ctx, st, u, client); err != nil && u.Message != nil && st.ChatID != "" {
+		_ = client.sendMessage(ctx, st.ChatID, "Gagal memproses pesan, coba lagi.")
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

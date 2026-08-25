@@ -83,13 +83,17 @@ func registerAIRoutes(api *gin.RouterGroup, a *App) {
 }
 
 func registerTelegramRoutes(api *gin.RouterGroup, a *App) {
-	h := tg.NewHandler(tg.NewService(a.DB, nil, nil))
+	h := tg.NewHandler(tg.NewService(a.DB, ai2.NewService(a.DB, a.Config), transactions.NewService(a.DB)))
+	// Webhook receives pushes from Telegram and must stay outside the CSRF
+	// middleware (Telegram has no browser session/cookie).
+	a.Engine.POST("/api/v1/telegram/webhook/:secret", h.HandleWebhook)
 	g := api.Group("/telegram")
 	g.Use(auth.AuthRequired(a.DB, a.Config))
 	cfg := g.Group("/config")
 	cfg.Use(auth.RequireOwner())
 	cfg.GET("", h.GetConfig)
 	cfg.PATCH("", h.UpdateConfig)
+	cfg.POST("/register-webhook", h.RegisterWebhook)
 }
 
 func registerScenarioRoutes(api *gin.RouterGroup, a *App) {

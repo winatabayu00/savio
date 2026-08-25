@@ -30,15 +30,16 @@ func NewService(db *gorm.DB, aiSvc *ai.Service, txSvc *transactions.Service) *Se
 	return &Service{db: db, ai: aiSvc, tx: txSvc}
 }
 
-// Poll fetches pending updates once. The worker calls it in a tight loop. It is
-// exactly-once per update (telegram_processed unique guard), even though
-// multiple worker replicas could poll concurrently.
+// Poll fetches pending updates once via long-poll. The worker calls it in a
+// tight loop. It is exactly-once per update (telegram_processed unique guard),
+// even though multiple worker replicas could poll concurrently. Webhook mode
+// (config.webhook_url set) replaces polling entirely.
 func (s *Service) Poll(ctx context.Context) error {
 	st, err := s.load(ctx)
 	if err != nil {
 		return err
 	}
-	if !st.Enabled || st.BotToken == "" {
+	if !st.Enabled || st.BotToken == "" || st.WebhookURL != "" {
 		return nil
 	}
 	client := newBotClient(st.BotToken)
@@ -61,15 +62,7 @@ func (s *Service) Poll(ctx context.Context) error {
 		if !s.claim(ctx, u.ID) {
 			continue // already handled by another tick
 		}
-		if u.Message == nil {
-			continue
-		}
-		// ponytail: chat is authorized by configured chat_id; multi-bot fan-out
-		// per chat would be the upgrade path if this grows beyond one bot.
-		if st.ChatID != "" && strconv.FormatInt(u.Message.Chat.ID, 10) != st.ChatID {
-			continue
-		}
-		if err := s.handle(ctx, st, u, client); err != nil {
+		if err := s.Handle(ctx, st, u, client); err != nil {
 			slog.Error("telegram handler", "error", err.Error(), "update_id", u.ID)
 		}
 	}
@@ -79,6 +72,19 @@ func (s *Service) Poll(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// Handle processes one Telegram update (shared by long-poll and webhook modes).
+// The chat is authorized by the configured chat_id; a secret-less webhook never
+// bypasses this.
+func (s *Service) Handle(ctx context.Context, st *Settings, u Update, client *botClient) error {
+	if !st.Enabled || st.BotToken == "" || u.Message == nil {
+		return nil
+	}
+	if st.ChatID != "" && strconv.FormatInt(u.Message.Chat.ID, 10) != st.ChatID {
+		return nil
+	}
+	return s.handle(ctx, st, u, client)
 }
 
 // claim inserts the update id with a unique constraint so a crash between "new
@@ -147,19 +153,19 @@ func (s *Service) handle(ctx context.Context, st *Settings, u Update, client *bo
 const helpText = "Cara pakai:\nKirim nama pengeluaran + nominal di akhir.\nContoh: `chocolate hazelnut dutch 24000`\nNominal boleh pakai titik/koma: `grab food 24.500`, `pulsa 50rb`, `kopi 2.5jt`."
 
 func (s *Service) ownerUserID(ctx context.Context, wsID uuid.UUID) (uuid.UUID, error) {
-	var id uuid.UUID
+	var owner struct{ UserID uuid.UUID }
 	err := s.db.WithContext(ctx).Table("workspace_memberships").
 		Where("workspace_id = ? AND role = 'OWNER' AND status = 'ACTIVE'", wsID).
-		Order("created_at").Limit(1).Pluck("user_id", &id).Error
-	return id, err
+		Order("created_at").Limit(1).Select("user_id").Take(&owner).Error
+	return owner.UserID, err
 }
 
 func (s *Service) defaultAccountID(ctx context.Context, wsID uuid.UUID) (uuid.UUID, error) {
-	var id uuid.UUID
+	var acc struct{ ID uuid.UUID }
 	err := s.db.WithContext(ctx).Table("accounts").
 		Where("workspace_id = ? AND status = 'ACTIVE'", wsID).
-		Order("created_at").Limit(1).Pluck("id", &id).Error
-	return id, err
+		Order("created_at").Limit(1).Select("id").Take(&acc).Error
+	return acc.ID, err
 }
 
 // workspaceDate returns today in the workspace timezone so the date-only field
@@ -215,17 +221,18 @@ func categorizeKeyword(desc string) string {
 // workspace (system or workspace-scoped). Falls back to "Other Expense". Returns
 // nil when nothing matches, leaving the transaction uncategorized.
 func resolveCategoryID(ctx context.Context, db *gorm.DB, wsID uuid.UUID, preferred string) *uuid.UUID {
-	var id uuid.UUID
+	var row struct{ ID uuid.UUID }
 	lookup := func(name string) bool {
-		return db.WithContext(ctx).Table("categories").
+		err := db.WithContext(ctx).Table("categories").
 			Where("name = ? AND type = 'EXPENSE' AND status = 'ACTIVE' AND (is_system = TRUE OR workspace_id = ?)", name, wsID).
-			Limit(1).Pluck("id", &id).Error == nil && id != uuid.Nil
+			Limit(1).Select("id").Take(&row).Error
+		return err == nil && row.ID != uuid.Nil
 	}
 	if lookup(preferred) {
-		return &id
+		return &row.ID
 	}
 	if lookup("Other Expense") {
-		return &id
+		return &row.ID
 	}
 	return nil
 }

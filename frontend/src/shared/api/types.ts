@@ -44,6 +44,7 @@ export interface TelegramConfig {
   bot_token_masked: string;
   chat_id: string;
   workspace_id: string;
+  webhook_url: string;
 }
 
 export interface TelegramConfigInput {

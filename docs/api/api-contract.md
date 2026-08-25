@@ -3167,10 +3167,57 @@ Errors:
 403 PERMISSION_DENIED       user is not a workspace OWNER
 ```
 
+```http
+POST /api/v1/telegram/config/register-webhook
+```
+
+Authentication: authenticated. Authorization: workspace OWNER. (CSRF protected,
+like all `/api/v1` mutations.)
+
+Registers (or removes, when `webhook_url` is empty) the bot webhook with Telegram.
+The endpoint URL is built here: `<webhook_url>/telegram/webhook/<random-secret>`.
+When a webhook is registered the worker stops long-polling.
+
+Request:
+
+```json
+{
+  "webhook_url": "https://xxx.ngrok-free.app"
+}
+```
+
+The `webhook_url` must be a public **https** address that routes to the Savio API
+process (Telegram rejects http). Response returns `webhook_url` including the
+secret path, e.g.
+
+```json
+{
+  "success": true,
+  "data": {
+    "enabled": true,
+    "bot_token_masked": "••••••••1234",
+    "chat_id": "123456789",
+    "workspace_id": "...",
+    "webhook_url": "https://xxx.ngrok-free.app/telegram/webhook/4f2c..."
+  }
+}
+```
+
+```http
+POST /api/v1/telegram/webhook/:secret
+```
+
+Unauthenticated (Telegram has no session cookies or CSRF). Guarded by the random
+`secret` path component, still authorized per configured `chat_id`, and exactly-
+once via `telegram_processed` (Telegram retries never duplicate a transaction).
+Should never be called directly by a browser.
+
 ## Telegram Recap Bot Behavior
 
 When `enabled` is true and a bot token is configured, the background worker
-long-polls Telegram. Messages from the authorized `chat_id` are handled as:
+long-polls Telegram — unless a webhook is registered (`webhook_url` set), in
+which case Telegram pushes updates directly to the API and polling stops.
+Messages from the authorized `chat_id` are handled as:
 
 - `/start` / `/help` → usage instructions reply.
 - Free-form text with an amount at the end (e.g. `chocolate hazelnut dutch 24000`,

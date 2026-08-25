@@ -5,6 +5,7 @@ import { getAIConfig, updateAIConfig } from '@/features/settings/api/ai-config.a
 import {
   getTelegramConfig,
   updateTelegramConfig,
+  registerTelegramWebhook,
 } from '@/features/settings/api/telegram-config.api';
 import { updateSettings } from '@/features/settings/api/settings.api';
 import type {
@@ -318,6 +319,12 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
     },
   });
 
+  const registerWebhook = useMutation({
+    mutationFn: (url: string) => registerTelegramWebhook(url),
+    onSuccess: () => void tgConfig.refetch(),
+  });
+
+  const [webhookBase, setWebhookBase] = useState('');
   const cfg = tgConfig.data;
   const [draft, setDraft] = useState<TelegramConfigInput | null>(null);
 
@@ -409,6 +416,61 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
       <div className="mt-3 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800">
         Transaksi yang masuk akan dicatat sebagai pengeluaran <b>POSTED</b> (langsung
         memengaruhi saldo) dengan kategori otomatis dan sumber 'TELEGRAM'.
+      </div>
+
+      <div className="mt-5 border-t border-gray-100 pt-4">
+        <h3 className="text-sm font-semibold text-gray-900">Webhook (pusat langsung)</h3>
+        <p className="mb-2 mt-1 text-xs text-gray-500">
+          Default: worker mengetik pesan setiap ±25 detik (long-poll). Untuk penerimaan yang
+          instan, daftarkan webhook ke URL <b>https</b> publik yang menuju ke backend Savio —
+          misalnya tunnel{' '}
+          <span className="font-medium">ngrok http 8080</span> lalu pakai URL
+          <span className="font-medium"> https://xxx.ngrok-free.app</span>. Setiap pesan
+          langsung masuk tanpa tundaan polling.
+        </p>
+
+        {f.webhook_url ? (
+          <div className="rounded-lg bg-gray-50 p-3 text-xs">
+            <p className="font-medium text-gray-700">Webhook terdaftar:</p>
+            <code className="mt-1 block break-all text-emerald-700">{f.webhook_url}</code>
+            {canEdit && (
+              <button
+                type="button"
+                disabled={registerWebhook.isPending}
+                onClick={() => registerWebhook.mutate('')}
+                className="mt-2 rounded-md border border-gray-300 px-3 py-1 text-xs text-gray-600 transition hover:bg-gray-100"
+              >
+                Hapus Webhook (kembali ke long-poll)
+              </button>
+            )}
+          </div>
+        ) : (
+          canEdit && (
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={webhookBase}
+                onChange={(e) => setWebhookBase(e.target.value)}
+                placeholder="https://xxx.ngrok-free.app"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                disabled={registerWebhook.isPending || !webhookBase}
+                onClick={() => registerWebhook.mutate(webhookBase)}
+                className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Daftarkan Webhook
+              </button>
+            </div>
+          )
+        )}
+        {registerWebhook.isError && (
+          <p className="mt-2 text-xs text-red-600">
+            Gagal mendaftarkan webhook. Pastikan URL https publik dan worker berjalan (proses
+            konfigurasi bot). Long-poll masih aktif.
+          </p>
+        )}
       </div>
 
       {saveConfig.isError && (
