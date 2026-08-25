@@ -7,6 +7,14 @@ const typeColor: Record<string, string> = {
   ADJUSTMENT: 'text-gray-700',
 };
 
+function timeLabel(tx: Transaction): string | null {
+  const raw = tx.posted_at ?? tx.created_at;
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+}
+
 interface Props {
   transactions: Transaction[];
   currency: string;
@@ -35,7 +43,10 @@ export function TransactionTable({ transactions, currency, onOpen }: Props) {
               className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50"
               onClick={() => onOpen(tx)}
             >
-              <td className="whitespace-nowrap px-4 py-3 text-gray-500">{tx.transaction_date}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-gray-500">
+                <div>{tx.transaction_date}</div>
+                <div className="text-xs text-gray-400">{timeLabel(tx) ?? '—'}</div>
+              </td>
               <td className="px-4 py-3">
                 <div className="font-medium text-gray-900">
                   {tx.description || tx.merchant || 'Untitled'}
