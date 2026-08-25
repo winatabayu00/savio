@@ -3072,6 +3072,8 @@ GET /api/v1/ai/config
 ```
 
 Authentication: authenticated. Authorization: workspace OWNER.
+The singleton bot configuration is bound to its first workspace; owners of other
+workspaces receive `403 PERMISSION_DENIED` rather than reading or replacing it.
 
 Response:
 
@@ -3192,8 +3194,8 @@ Request:
 ```
 
 The `webhook_url` must be a public **https** address that routes to the Savio API
-process (Telegram rejects http). Response returns `webhook_url` including the
-secret path, e.g.
+process (Telegram rejects http). Response returns only the public base URL; the
+generated route secret is never exposed through this API, e.g.
 
 ```json
 {
@@ -3203,7 +3205,7 @@ secret path, e.g.
     "bot_token_masked": "••••••••1234",
     "chat_id": "123456789",
     "workspace_id": "...",
-    "webhook_url": "https://xxx.ngrok-free.app/telegram/webhook/4f2c..."
+    "webhook_url": "https://xxx.ngrok-free.app"
   }
 }
 ```
@@ -3213,8 +3215,10 @@ POST /api/v1/telegram/webhook/:secret
 ```
 
 Unauthenticated (Telegram has no session cookies or CSRF). Guarded by the random
-`secret` path component, still authorized per configured `chat_id`, and exactly-
-once via `telegram_processed` (Telegram retries never duplicate a transaction).
+`secret` path component and Telegram's matching
+`X-Telegram-Bot-Api-Secret-Token` header, still authorized per configured
+`chat_id`, and exactly-once via `telegram_processed` (Telegram retries never
+duplicate a transaction).
 Should never be called directly by a browser.
 
 ## Telegram Recap Bot Behavior
