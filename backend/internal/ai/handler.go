@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/savio/savio/backend/internal/forecast"
 	"github.com/savio/savio/backend/internal/platform/authctx"
 	"github.com/savio/savio/backend/internal/platform/errs"
 	"github.com/savio/savio/backend/internal/platform/httpx"
@@ -13,9 +14,10 @@ import (
 )
 
 type Handler struct {
-	svc       *Service
+	svc         *Service
 	categorizeLim *ratelimit.Limiter
 	insightLim    *ratelimit.Limiter
+	copilotLim    *ratelimit.Limiter
 }
 
 func NewHandler(svc *Service) *Handler {
@@ -23,6 +25,7 @@ func NewHandler(svc *Service) *Handler {
 		svc:           svc,
 		categorizeLim: ratelimit.New(20, time.Minute),
 		insightLim:    ratelimit.New(10, time.Minute),
+		copilotLim:    ratelimit.New(10, time.Minute),
 	}
 }
 
@@ -122,6 +125,10 @@ type copilotReq struct {
 }
 
 func (h *Handler) Copilot(c *gin.Context) {
+	if !h.copilotLim.Allow("copilot:"+c.ClientIP(), time.Now()) {
+		httpx.Fail(c, errs.RateLimited("Too many Copilot requests. Try again shortly."))
+		return
+	}
 	x, err := authctx.Get(c)
 	if err != nil {
 		httpx.Fail(c, err)
@@ -133,6 +140,9 @@ func (h *Handler) Copilot(c *gin.Context) {
 		return
 	}
 	if req.Horizon <= 0 {
+		req.Horizon = 90
+	}
+	if !forecast.AllowedHorizons[req.Horizon] {
 		req.Horizon = 90
 	}
 	res, err := h.svc.Copilot(c.Request.Context(), x.WorkspaceID, req.Question, req.Horizon, time.Now().UTC())
