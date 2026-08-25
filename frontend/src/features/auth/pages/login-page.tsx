@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/providers/auth-provider';
 import { TextField } from '@/shared/components/ui/text-field';
-import { ApiError } from '@/shared/api/client';
+import { ApiError, errorMessage } from '@/shared/api/client';
 import { loginSchema, type LoginForm } from '@/features/auth/schemas/auth.schema';
 
 export function LoginPage() {
@@ -35,7 +35,7 @@ export function LoginPage() {
           setFormError(err.message);
         }
       } else {
-        setFormError('Something went wrong. Please try again.');
+        setFormError(errorMessage(err));
       }
     }
   });

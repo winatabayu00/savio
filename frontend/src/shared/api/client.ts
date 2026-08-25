@@ -1,5 +1,4 @@
 import axios, {
-  AxiosError,
   type AxiosInstance,
   type InternalAxiosRequestConfig,
 } from 'axios';
@@ -122,7 +121,10 @@ interface RetryableRequest extends InternalAxiosRequestConfig {
 
 api.interceptors.response.use(
   (res) => res,
-  async (error: AxiosError<ApiErrorBody>) => {
+  async (error: unknown) => {
+    if (!axios.isAxiosError<ApiErrorBody>(error)) {
+      throw error;
+    }
     const response = error.response;
     const status = response?.status ?? 0;
     const config = error.config as RetryableRequest | undefined;
@@ -141,9 +143,10 @@ if (
   },
 );
 
-export function toApiError(error: AxiosError<ApiErrorBody>): ApiError {
-  const status = error.response?.status ?? 0;
-  const data = error.response?.data;
+export function toApiError(error: unknown): ApiError {
+  const response = (error as { response?: { status?: number; data?: ApiErrorBody } } | null)?.response;
+  const status = response?.status ?? 0;
+  const data = response?.data;
   let message = data?.message;
   if (!message) {
     message =
