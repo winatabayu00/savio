@@ -21,6 +21,7 @@ case "$cmd" in
   migrate:force)              MIGRATE_VERSION="${2:?usage: savio migrate:force <version>}" make -C "$ROOT" migrate-force ;;
   fresh|fresh-db)             make -C "$ROOT" fresh-db ;;
   seed)                       make -C "$ROOT" seed-demo ;;
+  telegram:webhook)           WORKSPACE="${2:?usage: savio telegram:webhook <workspace-id> [url]}" WEBHOOK_URL="${3:-}" make -C "$ROOT" telegram-webhook ;;
   api)                        make -C "$ROOT" dev-api ;;
   web)                        make -C "$ROOT" dev-web ;;
   worker)                     make -C "$ROOT" dev-worker ;;
@@ -51,6 +52,7 @@ Usage: savio <command>
   migrate:force V  force migration version
   fresh            drop + migrate + reseed demo
   seed             reload demo data
+  telegram:webhook register/remove the Telegram bot webhook (savio telegram:webhook <workspace-id> [url])
   test             backend + frontend tests
   lint             go vet + typecheck
   audit            full verification suite

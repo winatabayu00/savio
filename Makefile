@@ -5,7 +5,7 @@ ENV_FILE := .env
 
 .PHONY: help infra-up infra-down infra-logs ps migrate-up migrate-down migrate-force \
         dev-api dev-worker dev-web test test-backend test-frontend lint build seed-demo \
-        fresh-db audit
+        telegram-webhook fresh-db audit
 
 help:
 	@echo "Savio make targets"
@@ -69,6 +69,10 @@ lint:
 
 seed-demo:
 	cd backend && go run ./cmd/seed -action=demo
+
+telegram-webhook:
+	@test "$$WORKSPACE" != "" || (echo "WORKSPACE=<workspace-id> required" && exit 1)
+	cd backend && go run ./cmd/telegramwebhook -workspace=$(WORKSPACE) -url=$(WEBHOOK_URL)
 
 fresh-db:
 	cd backend && go run ./cmd/migrate -action=down-all
