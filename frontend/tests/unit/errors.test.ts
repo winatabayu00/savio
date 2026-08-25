@@ -60,6 +60,16 @@ describe('ApiError mapping', () => {
     expect(errorMessage(new ApiError(409, 'VERSION_CONFLICT', 'ignored'))).toContain('Reload');
   });
 
+  it.each([
+    [401, 'sign in again'],
+    [403, 'do not have permission'],
+    [404, 'no longer available'],
+    [429, 'Too many requests'],
+    [500, 'data is safe'],
+  ])('maps HTTP %i to safe actionable UI copy', (status, expected) => {
+    expect(errorMessage(new ApiError(status, undefined, 'internal detail'))).toContain(expected);
+  });
+
   it('keeps the server request ID for support correlation', () => {
     const err = toApiError(axiosErrorWith(500, {
       success: false,

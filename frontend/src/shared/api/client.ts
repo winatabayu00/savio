@@ -159,8 +159,14 @@ export function toApiError(error: unknown): ApiError {
 
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.status === 401) return 'Your session has expired. Please sign in again.';
+    if (error.status === 403) return 'You do not have permission to perform this action.';
+    if (error.status === 404) return 'The requested record is no longer available.';
     if (error.status === 409) return 'This record changed. Reload the latest data, then try again.';
+    // Form fields retain the server-provided validation message and details.
+    if (error.status === 422) return error.message || 'Please correct the highlighted fields.';
     if (error.status === 429) return 'Too many requests. Please wait a moment before trying again.';
+    if (error.status >= 500) return 'The server could not complete your request. Your data is safe. Try again shortly.';
     return error.message;
   }
   return 'Something went wrong. Please try again.';
