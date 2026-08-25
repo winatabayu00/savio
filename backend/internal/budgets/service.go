@@ -92,6 +92,9 @@ func (s *Service) Create(ctx context.Context, workspaceID, userID uuid.UUID, in 
 	if err := validate(in.AmountMinor, in.PeriodStart, in.PeriodEnd); err != nil {
 		return nil, err
 	}
+	if err := s.validateExpenseCategory(ctx, workspaceID, in.CategoryID); err != nil {
+		return nil, err
+	}
 	overlap, err := s.repo.OverlappingActive(ctx, workspaceID, in.CategoryID, in.PeriodStart, in.PeriodEnd, uuid.Nil)
 	if err != nil {
 		return nil, err
@@ -124,6 +127,9 @@ func (s *Service) Create(ctx context.Context, workspaceID, userID uuid.UUID, in 
 
 func (s *Service) Update(ctx context.Context, workspaceID, userID uuid.UUID, in *UpdateInput, warning int64) (*View, error) {
 	if err := validate(in.AmountMinor, in.PeriodStart, in.PeriodEnd); err != nil {
+		return nil, err
+	}
+	if err := s.validateExpenseCategory(ctx, workspaceID, in.CategoryID); err != nil {
 		return nil, err
 	}
 	overlap, err := s.repo.OverlappingActive(ctx, workspaceID, in.CategoryID, in.PeriodStart, in.PeriodEnd, in.ID)
@@ -232,6 +238,22 @@ func warningThreshold(ctx context.Context, db *gorm.DB, userID uuid.UUID) int64 
 		return 80
 	}
 	return int64(t)
+}
+
+// validateExpenseCategory ensures the budget references an ACTIVE EXPENSE
+// category available to the workspace (system or custom). Without this a
+// budget could silently target an INCOME category or another workspace.
+func (s *Service) validateExpenseCategory(ctx context.Context, workspaceID, categoryID uuid.UUID) error {
+	var n int64
+	if err := s.db.WithContext(ctx).Table("categories").
+		Where("id = ? AND type = 'EXPENSE' AND status = 'ACTIVE' AND (is_system = TRUE OR workspace_id = ?)",
+			categoryID, workspaceID).Count(&n).Error; err != nil {
+		return errs.WrapInternal(err, "validate budget category")
+	}
+	if n == 0 {
+		return errs.ValidationFields(map[string]string{"category_id": "Category must be an active expense category in this workspace"})
+	}
+	return nil
 }
 
 func validate(amount int64, start, end time.Time) error {

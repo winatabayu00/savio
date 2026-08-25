@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 		dsn := v
 		testURL, err := url.Parse(dsn)
 		if err == nil {
-			testURL.Path = "/savio_test"
+			testURL.Path = "/savio_test_budgets"
 			ensureTestDB(dsn, testURL.String())
 			os.Setenv("DATABASE_URL", testURL.String())
 		}
@@ -69,7 +69,7 @@ func ensureTestDB(adminDSN, testDSN string) {
 		return
 	}
 	defer c.Close()
-	_, _ = c.Exec(`CREATE DATABASE savio_test`)
+	_, _ = c.Exec(`CREATE DATABASE savio_test_budgets`)
 	if err := migrateTestDB(testDSN); err != nil {
 		panic(err)
 	}
@@ -222,8 +222,8 @@ func TestBudgetDerivedSpendAndStatus(t *testing.T) {
 	}
 	f := fixture(t)
 	// spent 200 before budget edit covers 1000 threshold check; build budget
-	f.expense(t, "200", "03", "POSTED")  // 20000 minor
-	f.expense(t, "300", "04", "POSTED")  // 30000 minor
+	f.expense(t, "200", "03", "POSTED") // 20000 minor
+	f.expense(t, "300", "04", "POSTED") // 30000 minor
 
 	r := newRouter(t, f.wsID, budgets.NewHandler(budgets.NewService(db)))
 	w := doReq(t, r, "POST", "/api/v1/budgets", f.owner.String(),
@@ -323,4 +323,53 @@ func decodedVersion(t *testing.T, w *httptest.ResponseRecorder) (string, int64) 
 	t.Helper()
 	d := decodeBody(t, w)["data"].(map[string]any)
 	return d["id"].(string), int64(d["version"].(float64))
+}
+
+// TestBudgetRejectsInvalidCategory proves budgets only target ACTIVE EXPENSE
+// categories available to the workspace (system or custom). INCOME, foreign,
+// or missing categories must be rejected with 422.
+func TestBudgetRejectsInvalidCategory(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	f := fixture(t)
+	seedSystem := func() {
+		mustNil(t, seeds.SeedSystemCategories(t.Context(), db))
+	}
+	seedSystem()
+	var incomeCat struct{ ID uuid.UUID }
+	mustNil(t, db.Table("categories").Where("name = ? AND type = 'INCOME'", "Salary").First(&incomeCat).Error)
+	r := newRouter(t, f.wsID, budgets.NewHandler(budgets.NewService(db)))
+	mk := func(catID string) string {
+		return `{"category_id":"` + catID + `","amount":"500","period_start":"2026-08-01","period_end":"2026-08-31"}`
+	}
+	// INCOME category on an expense budget.
+	w := doReq(t, r, "POST", "/api/v1/budgets", f.owner.String(), mk(incomeCat.ID.String()))
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("income category expected 422, got %d %s", w.Code, w.Body.String())
+	}
+	// Nonexistent category.
+	w = doReq(t, r, "POST", "/api/v1/budgets", f.owner.String(), mk(uuid.New().String()))
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("missing category expected 422, got %d %s", w.Code, w.Body.String())
+	}
+	// Foreign-workspace custom EXPENSE category.
+	otherWS := uuid.New()
+	mustNil(t, db.Create(&workspaces.Workspace{ID: otherWS, Name: "X", BaseCurrency: "IDR", Timezone: "Asia/Jakarta"}).Error)
+	otherCat := uuid.New()
+	mustNil(t, db.Exec(`INSERT INTO categories (id, workspace_id, name, type, is_system, status, created_at, updated_at)
+		VALUES (?, ?, 'Private', 'EXPENSE', FALSE, 'ACTIVE', NOW(), NOW())`, otherCat, otherWS).Error)
+	t.Cleanup(func() {
+		db.Exec(`DELETE FROM categories WHERE id = $1`, otherCat)
+		db.Exec(`DELETE FROM workspaces WHERE id = $1`, otherWS)
+	})
+	w = doReq(t, r, "POST", "/api/v1/budgets", f.owner.String(), mk(otherCat.String()))
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("foreign category expected 422, got %d %s", w.Code, w.Body.String())
+	}
+	// System EXPENSE category is valid.
+	w = doReq(t, r, "POST", "/api/v1/budgets", f.owner.String(), mk(f.foodCat.String()))
+	if w.Code != http.StatusCreated {
+		t.Fatalf("system expense category expected 201, got %d %s", w.Code, w.Body.String())
+	}
 }
