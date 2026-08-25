@@ -33,6 +33,7 @@ type Provider interface {
 }
 
 type Config interface {
+	AIProvider() string
 	AIBaseURL() string
 	AIAPIKey() string
 	AIModel() string
@@ -40,6 +41,9 @@ type Config interface {
 }
 
 func NewProvider(cfg Config) Provider {
+	if cfg.AIProvider() == "mock" {
+		return Mock{}
+	}
 	base := cfg.AIBaseURL()
 	key := cfg.AIAPIKey()
 	if base == "" || key == "" {
@@ -139,9 +143,10 @@ func (o *OpenAIProvider) Complete(ctx context.Context, system, prompt string) (s
 // configAdapter adapts *config.Config to the ai.Config interface.
 type configAdapter struct{ cfg *config.Config }
 
-func (a configAdapter) AIBaseURL() string { return a.cfg.AIBaseURL }
-func (a configAdapter) AIAPIKey() string  { return a.cfg.AIAPIKey }
-func (a configAdapter) AIModel() string   { return a.cfg.AIModel }
+func (a configAdapter) AIBaseURL() string  { return a.cfg.AIBaseURL }
+func (a configAdapter) AIProvider() string { return a.cfg.AIProvider }
+func (a configAdapter) AIAPIKey() string   { return a.cfg.AIAPIKey }
+func (a configAdapter) AIModel() string    { return a.cfg.AIModel }
 func (a configAdapter) AITimeout() time.Duration {
 	return a.cfg.AITimeout
 }

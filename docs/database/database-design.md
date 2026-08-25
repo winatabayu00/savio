@@ -2274,32 +2274,28 @@ Do not store full sensitive prompts in this table by default.
 
 # 46. AI Copilot Conversation Persistence
 
-For MVP, conversation persistence is optional.
-
-If persistent chat history is implemented:
+Conversation persistence is implemented through:
 
 ```text
 ai_conversations
 ai_messages
 ```
 
-may be introduced.
+and migration `000014_ai_conversations`.
 
 However, the application should avoid storing unnecessary raw financial context in every message.
 
-Possible table:
+Authoritative shape:
 
 ```sql
 CREATE TABLE ai_conversations (
     id UUID PRIMARY KEY,
-
+    workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     user_id UUID NOT NULL,
-
-    title VARCHAR(255) NULL,
+    title VARCHAR(120) NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
     CONSTRAINT ai_conversations_user_fk
         FOREIGN KEY (user_id)
         REFERENCES users(id)
@@ -2318,11 +2314,12 @@ CREATE TABLE ai_messages (
     role VARCHAR(20) NOT NULL,
 
     content TEXT NOT NULL,
-
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    response JSONB NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
+    CONSTRAINT ai_messages_role_ck CHECK (role IN ('USER', 'ASSISTANT')),
+    CONSTRAINT ai_messages_content_ck CHECK (char_length(content) BETWEEN 1 AND 10000),
     CONSTRAINT ai_messages_conversation_fk
         FOREIGN KEY (conversation_id)
         REFERENCES ai_conversations(id)
@@ -2330,7 +2327,9 @@ CREATE TABLE ai_messages (
 );
 ```
 
-This can remain P1 if MVP scope is tight.
+Conversation access is always scoped by `workspace_id + user_id + id`.
+`response` stores the validated assistant response shown at that historical
+point. It must never replace current deterministic finance calculations.
 
 ---
 

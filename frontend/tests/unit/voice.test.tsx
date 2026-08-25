@@ -174,13 +174,24 @@ describe('Copilot talk mode', () => {
     HttpResponse.json({
       success: true,
       data: {
-        answer: 'Pengeluaranmu naik 12%.',
-        facts: [{ tool: 'compare_periods', label: 'Pengeluaran bulan ini', value: '12.000.000' }],
-        tool_used: 'compare_periods',
-        sources: [],
-        actions: [],
+        id: 'conversation-1', title: 'Test', created_at: '', updated_at: '',
+        messages: [{
+          id: 'message-1', role: 'ASSISTANT', content: 'Pengeluaranmu naik 12%.', created_at: '',
+          response: {
+            answer: 'Pengeluaranmu naik 12%.',
+            facts: [{ tool: 'compare_periods', label: 'Pengeluaran bulan ini', value: '12.000.000' }],
+            tool_used: 'compare_periods', sources: [], actions: [],
+          },
+        }],
       },
     });
+
+  const conversationHandlers = [
+    http.get(`${AUTH_BASE}/ai/conversations`, () => HttpResponse.json({ success: true, data: [] })),
+    http.get(`${AUTH_BASE}/ai/conversations/:id`, answer),
+    http.post(`${AUTH_BASE}/ai/conversations`, () => HttpResponse.json({ success: true, data: { id: 'conversation-1', title: null, created_at: '', updated_at: '', messages: [] } }, { status: 201 })),
+    http.post(`${AUTH_BASE}/ai/conversations/:id/messages`, answer),
+  ];
 
   it('disables Talk and shows a hint on unsupported browsers', async () => {
     server.use(
@@ -188,9 +199,10 @@ describe('Copilot talk mode', () => {
       http.get(`${AUTH_BASE}/ai/status`, () =>
         HttpResponse.json({ success: true, data: { enabled: true, state: 'online' } }),
       ),
+      ...conversationHandlers,
     );
     renderPage();
-    await waitFor(() => expect(screen.getByText('Savio Copilot')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Lenna')).toBeInTheDocument());
     const talk = screen.getByRole('button', { name: 'Talk' });
     expect(talk).toBeDisabled();
   });
@@ -201,7 +213,7 @@ describe('Copilot talk mode', () => {
       http.get(`${AUTH_BASE}/ai/status`, () =>
         HttpResponse.json({ success: true, data: { enabled: true, state: 'online' } }),
       ),
-      http.post(`${AUTH_BASE}/ai/copilot`, answer),
+      ...conversationHandlers,
     );
     renderPage();
     await waitFor(() =>
@@ -220,7 +232,7 @@ describe('Copilot talk mode', () => {
       http.get(`${AUTH_BASE}/ai/status`, () =>
         HttpResponse.json({ success: true, data: { enabled: true, state: 'online' } }),
       ),
-      http.post(`${AUTH_BASE}/ai/copilot`, answer),
+      ...conversationHandlers,
     );
     renderPage();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Talk' })).toBeEnabled());
@@ -241,7 +253,7 @@ describe('Copilot talk mode', () => {
       http.get(`${AUTH_BASE}/ai/status`, () =>
         HttpResponse.json({ success: true, data: { enabled: true, state: 'online' } }),
       ),
-      http.post(`${AUTH_BASE}/ai/copilot`, answer),
+      ...conversationHandlers,
     );
     renderPage();
     await waitFor(() =>

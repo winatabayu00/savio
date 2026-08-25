@@ -4448,7 +4448,8 @@ executes.
 
 # 136. AI Copilot Conversation Contract
 
-If persistent conversation is implemented:
+Persistent conversations are implemented. They are private to the authenticated
+user and bound to the active workspace.
 
 ```text
 POST /api/v1/ai/conversations
@@ -4458,9 +4459,40 @@ POST /api/v1/ai/conversations/:id/messages
 DELETE /api/v1/ai/conversations/:id
 ```
 
-This can remain P1.
+Create request has no body. It returns `201` with an empty conversation.
 
-Core AI Copilot may initially use stateless request/response.
+Message request:
+
+```json
+{
+  "question": "Why did I spend more this month?",
+  "horizon": 90
+}
+```
+
+Conversation response:
+
+```json
+{
+  "id": "conversation-uuid",
+  "title": "Why did I spend more this month?",
+  "created_at": "2026-08-25T10:00:00Z",
+  "updated_at": "2026-08-25T10:01:00Z",
+  "messages": [
+    {
+      "id": "message-uuid",
+      "role": "USER",
+      "content": "Why did I spend more this month?",
+      "created_at": "2026-08-25T10:01:00Z"
+    }
+  ]
+}
+```
+
+`GET /conversations` returns at most 100 summaries, newest activity first.
+Messages are ordered oldest first. `question` is limited to 2,000 characters.
+Sending a message reruns current deterministic finance tools; stored assistant
+answers are historical explanations, not authoritative current facts.
 
 ---
 

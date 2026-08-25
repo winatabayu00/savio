@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/savio/savio/backend/internal/forecast"
 	"github.com/savio/savio/backend/internal/platform/authctx"
@@ -164,6 +165,118 @@ func RegisterRoutes(g *gin.RouterGroup, h *Handler) {
 	g.POST("/categorize", h.Categorize)
 	g.POST("/insight", h.Insight)
 	g.POST("/copilot", h.Copilot)
+	g.POST("/conversations", h.CreateConversation)
+	g.GET("/conversations", h.ListConversations)
+	g.GET("/conversations/:id", h.GetConversation)
+	g.POST("/conversations/:id/messages", h.SendMessage)
+	g.DELETE("/conversations/:id", h.DeleteConversation)
+}
+
+func conversationID(c *gin.Context) (uuid.UUID, error) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return uuid.Nil, errs.ValidationFields(map[string]string{"id": "Invalid conversation ID."})
+	}
+	return id, nil
+}
+
+func (h *Handler) CreateConversation(c *gin.Context) {
+	x, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	row, err := h.svc.CreateConversation(c.Request.Context(), x.WorkspaceID, x.UserID)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusCreated, row)
+}
+
+func (h *Handler) ListConversations(c *gin.Context) {
+	x, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	rows, err := h.svc.ListConversations(c.Request.Context(), x.WorkspaceID, x.UserID)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	if rows == nil {
+		rows = []Conversation{}
+	}
+	httpx.Success(c, http.StatusOK, rows)
+}
+
+func (h *Handler) GetConversation(c *gin.Context) {
+	x, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	id, err := conversationID(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	row, err := h.svc.Conversation(c.Request.Context(), x.WorkspaceID, x.UserID, id)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, row)
+}
+
+func (h *Handler) SendMessage(c *gin.Context) {
+	if !h.copilotLim.Allow("copilot:"+c.ClientIP(), time.Now()) {
+		httpx.Fail(c, errs.RateLimited("Too many Copilot requests. Try again shortly."))
+		return
+	}
+	x, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	id, err := conversationID(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	var req copilotReq
+	if err := httpx.Bind(c, &req); err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	if req.Horizon <= 0 || !forecast.AllowedHorizons[req.Horizon] {
+		req.Horizon = 90
+	}
+	row, err := h.svc.SendMessage(c.Request.Context(), x.WorkspaceID, x.UserID, id, req.Question, req.Horizon, time.Now().UTC())
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, row)
+}
+
+func (h *Handler) DeleteConversation(c *gin.Context) {
+	x, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	id, err := conversationID(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	if err := h.svc.DeleteConversation(c.Request.Context(), x.WorkspaceID, x.UserID, id); err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 // configResponse never exposes the raw API key.

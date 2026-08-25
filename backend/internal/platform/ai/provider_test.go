@@ -66,6 +66,7 @@ func TestConfigAdapterDefaults(t *testing.T) {
 
 type cfgStub struct{}
 
+func (cfgStub) AIProvider() string       { return "mock" }
 func (cfgStub) AIBaseURL() string        { return "" }
 func (cfgStub) AIAPIKey() string         { return "" }
 func (cfgStub) AIModel() string          { return "" }

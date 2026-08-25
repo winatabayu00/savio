@@ -23,6 +23,22 @@ export interface CopilotDTO {
   clarification?: string;
 }
 
+export interface CopilotMessageDTO {
+  id: string;
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  response?: CopilotDTO;
+  created_at: string;
+}
+
+export interface CopilotConversationDTO {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+  messages?: CopilotMessageDTO[];
+}
+
 function monthBounds(offset = 0): { from: string; to: string } {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -49,6 +65,33 @@ export async function getInsight(): Promise<InsightDTO> {
 export async function askCopilot(question: string): Promise<CopilotDTO> {
   const { data } = await api.post<SuccessEnvelope<CopilotDTO>>('/ai/copilot', { question, horizon: 90 });
   return data.data;
+}
+
+export async function listConversations(): Promise<CopilotConversationDTO[]> {
+  const { data } = await api.get<SuccessEnvelope<CopilotConversationDTO[]>>('/ai/conversations');
+  return data.data;
+}
+
+export async function getConversation(id: string): Promise<CopilotConversationDTO> {
+  const { data } = await api.get<SuccessEnvelope<CopilotConversationDTO>>(`/ai/conversations/${id}`);
+  return data.data;
+}
+
+export async function createConversation(): Promise<CopilotConversationDTO> {
+  const { data } = await api.post<SuccessEnvelope<CopilotConversationDTO>>('/ai/conversations');
+  return data.data;
+}
+
+export async function sendConversationMessage(id: string, question: string): Promise<CopilotConversationDTO> {
+  const { data } = await api.post<SuccessEnvelope<CopilotConversationDTO>>(`/ai/conversations/${id}/messages`, {
+    question,
+    horizon: 90,
+  });
+  return data.data;
+}
+
+export async function deleteConversation(id: string): Promise<void> {
+  await api.delete(`/ai/conversations/${id}`);
 }
 
 export interface CategorizeDTO {

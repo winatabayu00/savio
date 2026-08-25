@@ -70,9 +70,10 @@ func (s *Service) loadSettings(ctx context.Context) (*Settings, error) {
 // interface used to build a provider (AGENTS #76).
 type settingsAdapter struct{ st *Settings }
 
-func (a settingsAdapter) AIBaseURL() string { return a.st.BaseURL }
-func (a settingsAdapter) AIAPIKey() string  { return a.st.APIKey }
-func (a settingsAdapter) AIModel() string   { return a.st.Model }
+func (a settingsAdapter) AIProvider() string { return a.st.Provider }
+func (a settingsAdapter) AIBaseURL() string  { return a.st.BaseURL }
+func (a settingsAdapter) AIAPIKey() string   { return a.st.APIKey }
+func (a settingsAdapter) AIModel() string    { return a.st.Model }
 func (a settingsAdapter) AITimeout() time.Duration {
 	return time.Duration(a.st.TimeoutSeconds) * time.Second
 }

@@ -21,8 +21,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"github.com/savio/savio/backend/internal/ai"
 	"github.com/savio/savio/backend/internal/accounts"
+	"github.com/savio/savio/backend/internal/ai"
 	"github.com/savio/savio/backend/internal/auth"
 	"github.com/savio/savio/backend/internal/migrations"
 	"github.com/savio/savio/backend/internal/platform/authctx"
@@ -212,6 +212,30 @@ func TestCategorizeEntryPicksCategoryAndAccount(t *testing.T) {
 	}
 	if res.AccountGuess != "GoPay" {
 		t.Fatalf("account = %q", res.AccountGuess)
+	}
+}
+
+func TestConversationPersistsAndScopesOwner(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	wsID, owner := fixture(t)
+	other := uuid.New()
+	mustNil(t, db.Create(&users.User{ID: other, Name: "Other", Email: "other-" + uuid.NewString()[:10] + "@savio.test",
+		PasswordHash: "x", Timezone: "Asia/Jakarta", DefaultCurrency: "IDR", Locale: "id-ID", Status: "ACTIVE"}).Error)
+	mustNil(t, db.Create(&workspaces.Membership{ID: uuid.New(), WorkspaceID: wsID, UserID: other, Role: "MEMBER", Status: "ACTIVE"}).Error)
+	t.Cleanup(func() { db.Delete(&users.User{}, "id = ?", other) })
+
+	svc := ai.NewService(db, testCfg(true))
+	conversation, err := svc.CreateConversation(t.Context(), wsID, owner)
+	mustNil(t, err)
+	conversation, err = svc.SendMessage(t.Context(), wsID, owner, conversation.ID, "Where did my money go?", 90, time.Now())
+	mustNil(t, err)
+	if len(conversation.Messages) != 2 || conversation.Title == nil {
+		t.Fatalf("conversation = %#v", conversation)
+	}
+	if _, err := svc.Conversation(t.Context(), wsID, other, conversation.ID); err == nil {
+		t.Fatal("other user accessed private conversation")
 	}
 }
 
