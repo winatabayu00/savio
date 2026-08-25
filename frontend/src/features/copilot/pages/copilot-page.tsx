@@ -26,11 +26,19 @@ function initialConversation() {
 }
 
 function AssistantAnswer({ response, onSpeak }: { response: CopilotDTO; onSpeak: (text: string) => void }) {
+  const [showFacts, setShowFacts] = useState(false);
   return (
     <div className="card shadow-sm">
       <div className="card-body">
-        <span className="badge bg-soft-primary text-primary">Lenna · grounded answer</span>
-        {response.facts.length > 0 ? (
+        <div className="d-flex align-items-center justify-content-between gap-2">
+          <span className="badge bg-soft-primary text-primary">Lenna · grounded answer</span>
+          {response.facts.length > 0 ? (
+            <button type="button" onClick={() => setShowFacts((v) => !v)} aria-expanded={showFacts} className="btn btn-link text-muted p-0 fs-12 fw-medium">
+              {showFacts ? 'Hide supporting facts' : 'Show supporting facts'}
+            </button>
+          ) : null}
+        </div>
+        {showFacts && response.facts.length > 0 ? (
           <div className="mt-3">
             <h3 className="fs-12 text-uppercase fw-semibold text-muted">Supporting facts</h3>
             <ul className="mt-2 list-unstyled d-flex flex-column gap-2 mb-0">
