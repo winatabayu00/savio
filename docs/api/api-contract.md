@@ -3462,7 +3462,7 @@ The AI orchestration layer may expose internal tools such as:
 
 ```text
 get_cashflow_summary
-get_account_summary
+get_account_balances
 get_category_breakdown
 compare_periods
 get_spending_changes
