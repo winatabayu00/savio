@@ -27,10 +27,10 @@ Core capabilities:
 - Cookie-based authentication, CSRF protection, refresh rotation, and workspace RBAC
 - Accounts, categories, transactions, transfers, reconciliation, and recurring activity
 - Budgets, goals, cashflow analytics, deterministic forecasts, and scenario simulation
-- AI categorization, insights, and bounded Savio Copilot tools
+- AI categorization, insight generation, and bounded Savio Copilot tools
 - Telegram recap: send a message like `chocolate hazelnut dutch 24000` to your bot
   and it becomes a categorized expense
-- Search, filter, sort, pagination, audit logging, queue jobs, and object storage
+- Search, filter, sort, pagination, audit logging, and scheduled worker jobs
 
 ## Quick Start
 
@@ -49,16 +49,16 @@ Email:    user@user.com
 Password: password
 ```
 
-The script creates `.env`, starts PostgreSQL and Redis, applies migrations, seeds demo data, then runs the API and frontend. See the [local development guide](docs/engineering/local-development.md) for manual installation, environment configuration, migrations, individual services, testing, and troubleshooting commands.
+The script creates `.env`, starts PostgreSQL and Redis, applies migrations, seeds demo data, then runs the API and frontend. Start `make dev-worker` separately for recurring auto-posting, notification sweeps, or Telegram long-polling. If `cloudflared` is installed, the script attempts a temporary HTTPS tunnel and webhook registration for enabled configured Telegram bots. `TELEGRAM_WEBHOOK_URL` only supplies a public base URL; it does not configure a Telegram bot. See the [local development guide](docs/engineering/local-development.md) for setup, worker, Telegram, migrations, tests, and troubleshooting.
 
 ## Tech Stack
 
 | Area | Technology |
 | --- | --- |
 | Backend | Go, Gin, GORM, PostgreSQL |
-| Frontend | React, TypeScript, Vite, Duralux SCSS (Bootstrap UI), Axios |
+| Frontend | React, TypeScript, Vite, Duralux SCSS (Bootstrap-style UI), Axios |
 | State and forms | TanStack Query, React Hook Form, Zod |
-| Infrastructure | Docker Compose, Redis, MinIO, Asynq |
+| Infrastructure | Docker Compose, PostgreSQL, Redis; MinIO provisioned for future uploads |
 | Testing | Go testing, Testify, Vitest, React Testing Library, MSW |
 | API docs | Versioned API contract |
 
@@ -68,8 +68,7 @@ Savio uses a modular monolith with explicit domain boundaries.
 
 ```text
 React Web -> Go REST API -> Application Services -> Finance Engine -> PostgreSQL
-                         -> Redis / Worker
-                         -> MinIO
+                         -> Redis (rate limiting) / polling worker
                          -> Bounded AI Provider
 ```
 
@@ -91,13 +90,13 @@ Application routes use `/api/v1`. Cookie authentication, CSRF validation, worksp
 
 ## Take-Home Coverage
 
-This repository implements the [full assignment specification](docs/assignment/take-home-test-specification.md).
+This repository implements the core finance, security, API, frontend, and AI flows in the [assignment specification](docs/assignment/take-home-test-specification.md). Tailwind-first UI and production Docker deployment are not currently implemented.
 
 | Requirement | Savio implementation | Detail |
 | --- | --- | --- |
 | Product and business flow | Connected personal-finance journey beyond CRUD | [Product foundation](docs/product/product-foundation.md) |
 | Go REST API | Gin, GORM, PostgreSQL, `/api/v1` | [System architecture](docs/architecture/system-architecture.md) |
-| React frontend | TypeScript, Duralux SCSS (Bootstrap UI), Axios | [Frontend architecture](docs/architecture/frontend-architecture.md) |
+| React frontend | TypeScript, Duralux SCSS (Bootstrap-style UI), Axios | [Frontend architecture](docs/architecture/frontend-architecture.md) |
 | Authentication and security | HttpOnly cookies, CSRF, expiry, refresh rotation | [Security](docs/engineering/security.md) |
 | Authorization | Backend-enforced `OWNER`, `MEMBER`, `VIEWER` roles | [Business requirements](docs/product/business-requirements.md) |
 | Database and migrations | Explicit up/down migrations, constraints, indexes | [Database design](docs/database/database-design.md) |
@@ -105,7 +104,7 @@ This repository implements the [full assignment specification](docs/assignment/t
 | Search and listing | Workspace-scoped search, filter, sort, pagination | [API contract](docs/api/api-contract.md) |
 | UI/UX | Responsive loading, empty, error, and form states | [Frontend architecture](docs/architecture/frontend-architecture.md) |
 | Testing | Backend, frontend, security, finance, and E2E strategy | [Testing strategy](docs/engineering/testing-strategy.md) |
-| Bonus engineering | Redis worker, MinIO, Docker, AI, observability | [Implementation progress](docs/engineering/implementation-progress.md) |
+| Additional engineering | Polling worker, Redis rate limiting, local Docker infrastructure, AI, audit logging | [Implementation progress](docs/engineering/implementation-progress.md) |
 
 ## Technical Decisions
 
@@ -117,6 +116,8 @@ This repository implements the [full assignment specification](docs/assignment/t
 - **Bounded AI tools:** backend-injected authorization context prevents AI from choosing trusted scope.
 
 Trade-offs: P0 uses one base currency per workspace, simple monthly category budgets, lightweight goals, and deterministic forecast assumptions. Advanced FX, investment tracking, autonomous AI actions, and production-scale observability remain outside current scope.
+
+Deployment status: local development infrastructure is included. Production Docker images and deployment configuration are not included.
 
 ## Documentation
 
