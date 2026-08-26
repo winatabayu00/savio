@@ -11,6 +11,20 @@ command -v go >/dev/null || { echo "error: go required"; exit 1; }
 command -v npm >/dev/null || { echo "error: node/npm required"; exit 1; }
 command -v curl >/dev/null || { echo "error: curl required"; exit 1; }
 
+start_telegram_tunnel() {
+  [ -n "${TELEGRAM_WEBHOOK_URL:-}" ] && return
+  command -v cloudflared >/dev/null || return
+  echo "==> starting Telegram HTTPS tunnel"
+  cloudflared tunnel --url http://localhost:8080 >/tmp/savio-telegram-tunnel.log 2>&1 &
+  TUNNEL_PID=$!
+  for _ in $(seq 1 30); do
+    TELEGRAM_WEBHOOK_URL="$(perl -0777 -ne 'while (m{(https://[-a-z0-9]+\.trycloudflare\.com)}g) { $url = $1 } print $url' /tmp/savio-telegram-tunnel.log)"
+    [ -n "${TELEGRAM_WEBHOOK_URL:-}" ] && export TELEGRAM_WEBHOOK_URL && return
+    sleep 1
+  done
+  echo "warning: Telegram tunnel unavailable; using long-poll (logs: /tmp/savio-telegram-tunnel.log)" >&2
+}
+
 stop_port_listeners() {
   local port="$1"
   local pids
@@ -69,10 +83,15 @@ test -d frontend/node_modules || ( cd frontend && npm install )
 echo "==> 6/6 starting servers"
 ( cd backend && exec go run ./cmd/api ) >/tmp/savio-api.log 2>&1 &
 API_PID=$!
-trap 'kill "${API_PID:-}" "${WEB_PID:-}" 2>/dev/null || true' EXIT INT TERM
+trap 'kill "${API_PID:-}" "${WEB_PID:-}" "${TUNNEL_PID:-}" 2>/dev/null || true' EXIT INT TERM
 if ! wait_for_http http://localhost:8080/health 120; then
   cat /tmp/savio-api.log >&2
   exit 1
+fi
+start_telegram_tunnel
+if [ -n "${TELEGRAM_WEBHOOK_URL:-}" ]; then
+  echo "==> registering Telegram webhooks: $TELEGRAM_WEBHOOK_URL"
+  ( cd backend && go run ./cmd/telegramwebhook -all -url "$TELEGRAM_WEBHOOK_URL" )
 fi
 ( cd frontend && exec npm run dev ) >/tmp/savio-web.log 2>&1 &
 WEB_PID=$!
@@ -85,6 +104,9 @@ echo
 echo "Savio is running:"
 echo "  Frontend  http://localhost:5173   (logs: /tmp/savio-web.log)"
 echo "  API       http://localhost:8080   (logs: /tmp/savio-api.log)"
+if [ -n "${TELEGRAM_WEBHOOK_URL:-}" ]; then
+  echo "  Telegram  $TELEGRAM_WEBHOOK_URL   (logs: /tmp/savio-telegram-tunnel.log)"
+fi
 echo "  Demo user user@user.com / password"
 echo "Press Ctrl-C to stop."
 wait
