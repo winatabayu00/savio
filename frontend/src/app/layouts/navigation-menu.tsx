@@ -36,33 +36,33 @@ const GROUPS: NavGroup[] = [
   {
     label: 'Keuangan',
     items: [
-      { to: '/accounts', label: 'Accounts', icon: <FiCreditCard /> },
-      { to: '/transactions', label: 'Transactions', icon: <FiCreditCard /> },
-      { to: '/transfers', label: 'Transfers', icon: <FiRepeat /> },
-      { to: '/recurring', label: 'Recurring', icon: <FiRepeat /> },
-      { to: '/categories', label: 'Categories', icon: <FiTag /> },
+      { to: '/accounts', label: 'Akun', icon: <FiCreditCard /> },
+      { to: '/transactions', label: 'Transaksi', icon: <FiCreditCard /> },
+      { to: '/transfers', label: 'Transfer', icon: <FiRepeat /> },
+      { to: '/recurring', label: 'Berulang', icon: <FiRepeat /> },
+      { to: '/categories', label: 'Kategori', icon: <FiTag /> },
     ],
   },
   {
     label: 'Analisis & Perencanaan',
     items: [
-      { to: '/analytics', label: 'Analytics', icon: <FiBarChart /> },
-      { to: '/budgets', label: 'Budgets', icon: <FiTarget /> },
-      { to: '/goals', label: 'Goals', icon: <FiTarget /> },
+      { to: '/analytics', label: 'Analitik', icon: <FiBarChart /> },
+      { to: '/budgets', label: 'Anggaran', icon: <FiTarget /> },
+      { to: '/goals', label: 'Target', icon: <FiTarget /> },
     ],
   },
   {
     label: 'Proyeksi',
     items: [
-      { to: '/forecast', label: 'Forecast', icon: <FiTrendingUp /> },
-      { to: '/scenarios', label: 'Scenarios', icon: <FiGrid /> },
+      { to: '/forecast', label: 'Prediksi', icon: <FiTrendingUp /> },
+      { to: '/scenarios', label: 'Skenario', icon: <FiGrid /> },
     ],
   },
   {
     label: 'AI',
     items: [
-      { to: '/insights', label: 'Insights', icon: <FiZap /> },
-      { to: '/copilot', label: 'Copilot', icon: <FiMessageSquare /> },
+      { to: '/insights', label: 'Wawasan', icon: <FiZap /> },
+      { to: '/copilot', label: 'Savio Copilot', icon: <FiMessageSquare /> },
     ],
   },
   {
