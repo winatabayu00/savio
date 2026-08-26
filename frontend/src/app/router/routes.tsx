@@ -20,8 +20,10 @@ import { InsightsPage } from '@/features/insights/pages/insights-page';
 import { CopilotPage } from '@/features/copilot/pages/copilot-page';
 import { SettingsPage } from '@/features/settings/pages/settings-page';
 import { AuditLogsPage } from '@/features/audit/pages/audit-logs-page';
+import { DocumentationPage } from '@/features/documentation/pages/documentation-page';
 
 export const router = createBrowserRouter([
+  { path: '/documentation', element: <DocumentationPage /> },
   {
     element: <AuthLayout />,
     children: [

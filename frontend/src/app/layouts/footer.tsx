@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export function Footer() {
   return (
     <footer className="footer">
@@ -6,9 +8,8 @@ export function Footer() {
         {new Date().getFullYear()} Savio
       </p>
       <div className="d-flex align-items-center gap-4">
-        <a href="#" className="fs-11 fw-semibold text-uppercase">
-          Help
-        </a>
+        <Link to="/documentation" className="fs-11 fw-semibold text-uppercase">Documentation</Link>
+        <Link to="/documentation#api-docs" className="fs-11 fw-semibold text-uppercase">API docs</Link>
         <a href="#" className="fs-11 fw-semibold text-uppercase">
           Terms
         </a>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   FiAlignLeft,
   FiArrowRight,
+  FiBookOpen,
   FiLogOut,
   FiSettings,
 } from 'react-icons/fi';
@@ -84,6 +85,15 @@ export function Header({ navigationOpen, setNavigationOpen }: HeaderProps) {
         </div>
         <div className="header-right ms-auto">
           <div className="d-flex align-items-center">
+            <button
+              type="button"
+              className="nxl-head-link"
+              onClick={() => navigate('/documentation')}
+              aria-label="Open documentation"
+              title="Documentation"
+            >
+              <FiBookOpen size={18} />
+            </button>
             <div ref={profileRef} className="dropdown nxl-h-item">
               <button
                 type="button"
