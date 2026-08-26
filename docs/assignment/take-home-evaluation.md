@@ -31,7 +31,7 @@ Pass recommendation is conditional on fixing the refresh-rotation race and makin
 
 Bonus engineering is substantial but uneven:
 
-- Positive: Redis/Asynq worker, MinIO infrastructure, AI provider abstraction, audit logging, request IDs, rate limiting, health/readiness, race-detector CI, migration tests, optimistic-locking/domain conflict handling.
+- Positive: polling worker, MinIO local infrastructure, AI provider abstraction, audit logging, request IDs, rate limiting, health/readiness, race-detector CI, migration tests, optimistic-locking/domain conflict handling.
 - Partial: MinIO has no demonstrated implemented upload flow; Compose contains infrastructure but not API/frontend/worker; no Playwright critical-flow E2E; no OpenAPI artifact; CI declares Go 1.24 while `backend/go.mod` requires Go 1.27.
 - Recommended reviewer treatment: meaningful differentiator, not score compensation for failed core security/tests.
 
@@ -74,7 +74,7 @@ Status uses the assignment vocabulary: `PASS`, `PASS WITH NOTES`, `PARTIAL`, `FA
 | Backend testing | Unit, preferably integration | Extensive service tests | `backend/internal/**/*_test.go` | `go test ./...` | PARTIAL | 93 pass, 2 fail due SSL DSN mismatch. |
 | Frontend testing | Component/integration; E2E bonus | 4 files, 21 tests | `frontend/tests/` | `npm run test -- --run` | PARTIAL | Auth/refresh/voice/errors covered; core pages and E2E missing. |
 | File storage bonus | Actual secure object-storage flow | MinIO in Compose only | `docker-compose.yml` | None found | PARTIAL | Infrastructure is not a feature. |
-| Queue worker bonus | Async processing with Redis/RabbitMQ | Asynq worker and jobs | `backend/cmd/worker`, `internal/worker` | Worker tests | PASS WITH NOTES | Good bonus; runtime Compose path incomplete. |
+| Worker bonus | Async processing with Redis/RabbitMQ | Direct PostgreSQL polling worker | `backend/cmd/worker`, `internal/worker` | Worker tests | PASS WITH NOTES | Scheduled jobs work; Redis queue processing is not implemented. |
 | Docker bonus | `docker compose up` runs needed services | PostgreSQL/Redis/MinIO services | `docker-compose.yml` | `docker compose config --quiet` | PARTIAL | API/frontend/worker not included. |
 | Creativity | Value-add feature quality | Analytics, forecast, scenario, AI, audit | Feature modules/pages | Module tests | PASS | Feature selection is coherent, not quantity-driven. |
 | Performance/security/observability bonus | Indexes, rate limits, locking, logs, request ID, health | Present across platform/modules | `platform/`, CI, middleware | Related tests | PASS WITH NOTES | Refresh race, secret validation, no tracing/metrics. |
@@ -143,7 +143,7 @@ Status uses the assignment vocabulary: `PASS`, `PASS WITH NOTES`, `PARTIAL`, `FA
 
 **Strengths:** Product and technical decisions are unusually well explained.
 
-**Deductions:** Missing `docs/api/openapi.yaml`; internal references disagree about it. Migration path says `backend/migrations/` while implementation is under `backend/internal/migrations/`. Progress says authentication is in progress while README claims full coverage.
+**Deductions:** Missing `docs/api/openapi.yaml`. Tailwind-first frontend and production Docker deployment remain unimplemented.
 
 ### Git Quality — 4/5
 
