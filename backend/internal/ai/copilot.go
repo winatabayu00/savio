@@ -121,6 +121,21 @@ func (s *Service) routeIntent(ctx context.Context, workspaceID uuid.UUID, q stri
 	prevTo := now.AddDate(0, 0, -now.Day()).Format("2006-01-02")
 
 	switch {
+	case strings.Contains(q, "account") || strings.Contains(q, "balance") || strings.Contains(q, "saldo"):
+		rows, _, err := s.accountService().List(ctx, workspaceID, "", "", "", false, 1, 100, 0)
+		if err != nil {
+			return intentResult{validation: "Could not load accounts."}
+		}
+		var total int64
+		for _, a := range rows {
+			appendFact("get_account_balances", a.Name, money.FormatMinorUnits(a.DerivedBalance)+" ("+a.Status+")")
+			if a.Status == "ACTIVE" {
+				total += a.DerivedBalance
+			}
+		}
+		appendFact("get_account_balances", "Total active balance", money.FormatMinorUnits(total))
+		return intentResult{name: "get_account_balances", sources: []string{"get_account_balances"}}
+
 	case strings.Contains(q, "forecast") || strings.Contains(q, "projection") || strings.Contains(q, "future"):
 		f, err := s.forecastService().Compute(ctx, workspaceID, horizon, now)
 		if err != nil {

@@ -329,6 +329,29 @@ func TestCopilotForecastQuestionUsesForecastTool(t *testing.T) {
 	}
 }
 
+func TestCopilotAccountBalancesAreWorkspaceScoped(t *testing.T) {
+	if db == nil {
+		t.Skip("DATABASE_URL not set")
+	}
+	wsID, _ := fixture(t)
+	mustNil(t, db.Create(&accounts.Account{ID: uuid.New(), WorkspaceID: wsID, Name: "Private account", Type: "BANK", Currency: "IDR", OpeningBalance: 1250000, Status: "ACTIVE"}).Error)
+	otherWS, _ := fixture(t)
+	mustNil(t, db.Create(&accounts.Account{ID: uuid.New(), WorkspaceID: otherWS, Name: "Other workspace", Type: "BANK", Currency: "IDR", OpeningBalance: 99000000, Status: "ACTIVE"}).Error)
+
+	res, err := ai.NewService(db, testCfg(true)).Copilot(t.Context(), wsID, "What are my account balances?", 90, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("copilot: %v", err)
+	}
+	if res.ToolUsed != "get_account_balances" {
+		t.Fatalf("tool used = %s", res.ToolUsed)
+	}
+	for _, fact := range res.Facts {
+		if fact.Label == "Other workspace" || fact.Value == "990000.00" {
+			t.Fatalf("cross-workspace account leaked: %+v", res.Facts)
+		}
+	}
+}
+
 func TestCopilotAffordabilityExtractsAmount(t *testing.T) {
 	if db == nil {
 		t.Skip("DATABASE_URL not set")

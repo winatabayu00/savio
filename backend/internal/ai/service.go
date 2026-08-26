@@ -10,6 +10,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/savio/savio/backend/internal/accounts"
 	"github.com/savio/savio/backend/internal/analytics"
 	"github.com/savio/savio/backend/internal/budgets"
 	"github.com/savio/savio/backend/internal/forecast"
@@ -167,6 +168,7 @@ func (s *Service) Insight(ctx context.Context, workspaceID uuid.UUID, from, to, 
 }
 
 func (s *Service) forecastService() *forecast.Service { return forecast.NewService(s.db) }
+func (s *Service) accountService() *accounts.Service  { return accounts.NewService(s.db) }
 func (s *Service) budgetService() *budgets.Service    { return budgets.NewService(s.db) }
 func (s *Service) goalService() *goals.Service        { return goals.NewService(s.db) }
 
