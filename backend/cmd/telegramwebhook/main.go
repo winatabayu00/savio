@@ -17,18 +17,15 @@ import (
 // for dev. Usage:
 //
 //	go run ./cmd/telegramwebhook -workspace <id> -url https://xxx.ngrok-free.app
-//	go run ./cmd/telegramwebhook -workspace <id>          # removes webhook
+//	go run ./cmd/telegramwebhook -all -url https://xxx.ngrok-free.app
 func main() {
 	workspace := flag.String("workspace", "", "workspace UUID owning the bot")
+	all := flag.Bool("all", false, "register every enabled configured bot")
 	url := flag.String("url", "", "public HTTPS base URL to register (empty removes)")
 	flag.Parse()
 
-	if *workspace == "" {
-		log.Fatal("usage: telegramwebhook -workspace <id> [-url https://...]")
-	}
-	wsID, err := uuid.Parse(*workspace)
-	if err != nil {
-		log.Fatalf("bad workspace id: %v", err)
+	if (*workspace == "") == !*all {
+		log.Fatal("usage: telegramwebhook (-workspace <id> | -all) -url https://...")
 	}
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
@@ -41,6 +38,24 @@ func main() {
 
 	ctx := context.Background()
 	svc := telegram.NewService(db, nil, nil)
+	if *all {
+		var settings []telegram.Settings
+		if err := db.WithContext(ctx).Where("enabled = TRUE AND bot_token <> ''").Find(&settings).Error; err != nil {
+			log.Fatalf("list Telegram settings: %v", err)
+		}
+		for _, st := range settings {
+			if _, err := svc.RegisterWebhook(ctx, st.WorkspaceID, *url); err != nil {
+				log.Fatalf("register webhook for workspace %s: %v", st.WorkspaceID, err)
+			}
+			log.Printf("webhook registered for workspace %s", st.WorkspaceID)
+		}
+		log.Printf("registered %d Telegram webhook(s)", len(settings))
+		return
+	}
+	wsID, err := uuid.Parse(*workspace)
+	if err != nil {
+		log.Fatalf("bad workspace id: %v", err)
+	}
 
 	if *url == "" {
 		st, err := svc.RegisterWebhook(ctx, wsID, "")
