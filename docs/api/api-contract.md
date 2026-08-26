@@ -892,57 +892,6 @@ The session must belong to the authenticated user.
 
 ---
 
-# 30. User Profile Endpoints
-
-Base:
-
-```text
-/api/v1/profile
-```
-
-Endpoints:
-
-```text
-GET   /api/v1/profile
-PATCH /api/v1/profile
-```
-
----
-
-# 31. Update Profile
-
-```http
-PATCH /api/v1/profile
-```
-
-Request:
-
-```json
-{
-  "name": "Alex Wijaya",
-  "timezone": "Asia/Jakarta",
-  "locale": "id-ID"
-}
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "user-uuid",
-    "name": "Alex Wijaya",
-    "email": "alex@example.com",
-    "timezone": "Asia/Jakarta",
-    "default_currency": "IDR",
-    "locale": "id-ID"
-  }
-}
-```
-
----
-
 # 32. Settings Endpoints
 
 Base:
@@ -1372,11 +1321,9 @@ Endpoints:
 ```text
 GET    /api/v1/categories
 POST   /api/v1/categories
-GET    /api/v1/categories/:id
 PATCH  /api/v1/categories/:id
 POST   /api/v1/categories/:id/archive
 POST   /api/v1/categories/:id/restore
-DELETE /api/v1/categories/:id
 ```
 
 ---
@@ -1391,15 +1338,13 @@ Query:
 
 ```text
 type=INCOME|EXPENSE
-status=ACTIVE|ARCHIVED
-include_system=true|false
-search=
+include_archived=true|false
 ```
 
 Example:
 
 ```http
-GET /api/v1/categories?type=EXPENSE&status=ACTIVE
+GET /api/v1/categories?type=EXPENSE&include_archived=false
 ```
 
 Response:
@@ -1473,6 +1418,7 @@ GET    /api/v1/transactions
 POST   /api/v1/transactions
 GET    /api/v1/transactions/:id
 PATCH  /api/v1/transactions/:id
+POST   /api/v1/transactions/:id/post
 POST   /api/v1/transactions/:id/void
 ```
 
@@ -1501,10 +1447,8 @@ search
 type
 account_id
 category_id
-date_from
-date_to
-min_amount
-max_amount
+from
+to
 status
 sort
 order
@@ -1515,7 +1459,7 @@ limit
 Example:
 
 ```http
-GET /api/v1/transactions?type=EXPENSE&category_id=abc&date_from=2026-08-01&date_to=2026-08-31&sort=transaction_date&order=desc&page=1&limit=20
+GET /api/v1/transactions?type=EXPENSE&category_id=abc&from=2026-08-01&to=2026-08-31&sort=t.transaction_date&order=desc&page=1&limit=20
 ```
 
 Response:
@@ -1613,7 +1557,6 @@ Request:
 
 ```json
 {
-  "account_id": "account-uuid",
   "category_id": "food-category-uuid",
   "type": "EXPENSE",
   "amount": "87500.00",
@@ -1940,6 +1883,8 @@ POST /api/v1/recurring-transactions/:id/resume
 POST /api/v1/recurring-transactions/:id/end
 
 GET  /api/v1/recurring-transactions/:id/occurrences
+POST /api/v1/recurring-occurrences/:id/confirm
+POST /api/v1/recurring-occurrences/:id/skip
 ```
 
 ---
@@ -2117,7 +2062,7 @@ GET   /api/v1/budgets
 POST  /api/v1/budgets
 GET   /api/v1/budgets/:id
 PATCH /api/v1/budgets/:id
-POST  /api/v1/budgets/:id/archive
+POST  /api/v1/budgets/:id/close
 ```
 
 ---
@@ -2309,7 +2254,7 @@ PATCH /api/v1/goals/:id
 POST /api/v1/goals/:id/pause
 POST /api/v1/goals/:id/resume
 POST /api/v1/goals/:id/cancel
-POST /api/v1/goals/:id/mark-achieved
+POST /api/v1/goals/:id/achieve
 ```
 
 ---
@@ -2412,12 +2357,6 @@ GET /api/v1/dashboard
 
 Recommended as a composite endpoint.
 
-Query:
-
-```text
-period=2026-08
-```
-
 Response:
 
 ```json
@@ -2503,14 +2442,14 @@ GET /api/v1/analytics/cashflow
 Query:
 
 ```text
-date_from
-date_to
+from
+to
 ```
 
 Example:
 
 ```http
-GET /api/v1/analytics/cashflow?date_from=2026-08-01&date_to=2026-08-31
+GET /api/v1/analytics/cashflow?from=2026-08-01&to=2026-08-31
 ```
 
 Response:
@@ -2539,8 +2478,8 @@ Query:
 
 ```text
 type=EXPENSE
-date_from
-date_to
+from
+to
 ```
 
 Response:
@@ -2550,12 +2489,10 @@ Response:
   "success": true,
   "data": [
     {
-      "category": {
-        "id": "food-uuid",
-        "name": "Food & Dining"
-      },
-      "amount": "2400000.00",
-      "percentage": "28.57"
+      "category_id": "food-uuid",
+      "category_name": "Food & Dining",
+      "total": "2400000.00",
+      "items": 12
     }
   ]
 }
@@ -2609,143 +2546,13 @@ Response:
 
 # 79. Forecast API
 
-Base:
-
-```text
-/api/v1/forecast
-```
-
-Endpoints:
-
-```text
-GET  /api/v1/forecast
-POST /api/v1/forecast/calculate
-GET  /api/v1/forecast/history
-GET  /api/v1/forecast/:snapshotId
-```
-
----
-
-# 80. Calculate Forecast
-
 ```http
-POST /api/v1/forecast/calculate
+GET /api/v1/forecast?horizon=90
 ```
 
-Request:
-
-```json
-{
-  "horizon_days": 90,
-  "persist": true,
-  "assumptions": {
-    "variable_spending_method": "HISTORICAL_AVERAGE"
-  }
-}
-```
-
-Backend performs deterministic calculation.
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "snapshot_id": "forecast-uuid",
-    "generated_at": "2026-08-24T15:00:00Z",
-    "data_through_date": "2026-08-24",
-    "horizon_days": 90,
-    "confidence": "MEDIUM",
-    "calculation_version": "finance-engine-v1",
-    "summary": {
-      "opening_balance": "16250000.00",
-      "projected_income": "36000000.00",
-      "projected_expense": "30800000.00",
-      "ending_balance": "21450000.00",
-      "minimum_balance": "3200000.00"
-    },
-    "assumptions": [
-      {
-        "type": "VARIABLE_SPENDING",
-        "description": "Estimated using recent historical average."
-      }
-    ],
-    "timeline": [
-      {
-        "date": "2026-08-25",
-        "type": "SCHEDULED",
-        "source": "Monthly Salary",
-        "direction": "IN",
-        "amount": "12000000.00",
-        "projected_balance_after": "28250000.00"
-      },
-      {
-        "date": "2026-09-01",
-        "type": "SCHEDULED",
-        "source": "Rent",
-        "direction": "OUT",
-        "amount": "3000000.00",
-        "projected_balance_after": "25250000.00"
-      }
-    ]
-  }
-}
-```
-
----
-
-# 81. Get Latest Forecast
-
-```http
-GET /api/v1/forecast
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "snapshot_id": "forecast-uuid",
-    "status": "FRESH",
-    "generated_at": "2026-08-24T15:00:00Z",
-    "confidence": "MEDIUM",
-    "summary": {
-      "ending_balance": "21450000.00",
-      "minimum_balance": "3200000.00"
-    }
-  }
-}
-```
-
-If none exists:
-
-```http
-404 Not Found
-```
-
-or return a documented empty state.
-
-Consistency should be chosen during implementation.
-
----
-
-# 82. Stale Forecast
-
-Example response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "snapshot_id": "forecast-uuid",
-    "status": "STALE",
-    "generated_at": "2026-08-24T12:00:00Z",
-    "stale_reason": "Financial data changed after forecast generation."
-  }
-}
-```
+`horizon` is optional and accepts `30`, `60`, `90`, `180`, or `365`; default is
+`90`. The endpoint computes and returns a deterministic forecast immediately. It
+does not persist forecast snapshots and has no history or snapshot routes.
 
 ---
 
@@ -2772,9 +2579,6 @@ DELETE /api/v1/scenarios/:id/modifications/:modificationId
 
 POST   /api/v1/scenarios/:id/calculate
 GET    /api/v1/scenarios/:id/snapshots
-GET    /api/v1/scenarios/:id/snapshots/:snapshotId
-
-POST   /api/v1/scenarios/:id/archive
 ```
 
 ---
@@ -3000,20 +2804,16 @@ Base:
 Endpoints:
 
 ```text
-POST /api/v1/ai/categorize-transaction
-GET  /api/v1/ai/insights
-GET  /api/v1/ai/insights/:id
-POST /api/v1/ai/insights/:id/view
-POST /api/v1/ai/insights/:id/acknowledge
-POST /api/v1/ai/insights/:id/dismiss
-POST /api/v1/ai/insights/:id/feedback
-
-POST /api/v1/ai/copilot
-POST /api/v1/ai/explain-scenario
-
 GET  /api/v1/ai/status
 POST /api/v1/ai/categorize
 POST /api/v1/ai/insight
+POST /api/v1/ai/copilot
+
+POST   /api/v1/ai/conversations
+GET    /api/v1/ai/conversations
+GET    /api/v1/ai/conversations/:id
+POST   /api/v1/ai/conversations/:id/messages
+DELETE /api/v1/ai/conversations/:id
 
 GET  /api/v1/ai/config          (OWNER only)
 PATCH /api/v1/ai/config         (OWNER only)
@@ -3031,7 +2831,7 @@ masked suffix (`api_key_masked`) is exposed.
 # 92. AI Transaction Categorization
 
 ```http
-POST /api/v1/ai/categorize-transaction
+POST /api/v1/ai/categorize
 ```
 
 Request:
@@ -3039,9 +2839,7 @@ Request:
 ```json
 {
   "description": "GRAB*FOOD 83219",
-  "merchant": "GrabFood",
-  "transaction_type": "EXPENSE",
-  "amount": "87500.00"
+  "merchant": "GrabFood"
 }
 ```
 
@@ -3234,150 +3032,14 @@ Messages from the authorized `chat_id` are handled as:
   `grab food 24.500`, `pulsa 50rb`, `kopi 2.5jt`) → creates a POSTED
   EXPENSE transaction in the bound workspace, sourced `TELEGRAM`, category
   suggested by the AI categorizer (deterministic keyword fallback when AI is
-  disabled — AGENTS #77), charged to the workspace's first ACTIVE account, dated
-  today in the workspace timezone, and replies with a confirmation.
+   disabled — AGENTS #77). The categorizer may select an account; otherwise the
+   workspace's first ACTIVE account is charged. The transaction is dated today in
+   the workspace timezone and the bot replies with a confirmation.
 - Unrecognized text → help/format reply. No transaction is created.
 
 Messages are exactly-once: each update_id is claimed in `telegram_processed`
 before handling, so crashes never duplicate a transaction. No amount is fetched
 from AI; categorization is AI-assisted only (AGENTS #64).
-
----
-
-# 93. List AI Insights
-
-```http
-GET /api/v1/ai/insights
-```
-
-Query:
-
-```text
-type
-severity
-status
-date_from
-date_to
-page
-limit
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "insight-uuid",
-      "type": "SPENDING_ANOMALY",
-      "severity": "MEDIUM",
-      "title": "Dining spending increased",
-      "summary": "Dining spending is 60% above your recent baseline.",
-      "status": "NEW",
-      "generated_at": "2026-08-24T14:00:00Z"
-    }
-  ],
-  "meta": {
-    "page": 1,
-    "limit": 20,
-    "total": 4,
-    "total_pages": 1
-  }
-}
-```
-
----
-
-# 94. AI Insight Detail
-
-```http
-GET /api/v1/ai/insights/:id
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "insight-uuid",
-    "type": "SPENDING_ANOMALY",
-    "severity": "MEDIUM",
-    "title": "Dining spending increased",
-    "summary": "Dining spending is significantly above your recent baseline.",
-    "drivers": [
-      {
-        "label": "Food Delivery",
-        "difference": "720000.00"
-      }
-    ],
-    "context": {
-      "current_amount": "2400000.00",
-      "baseline_amount": "1500000.00",
-      "change_percent": "60.00"
-    },
-    "suggested_actions": [
-      {
-        "type": "REVIEW_BUDGET",
-        "label": "Review Food & Dining budget"
-      }
-    ],
-    "status": "NEW"
-  }
-}
-```
-
----
-
-# 95. Dismiss Insight
-
-```http
-POST /api/v1/ai/insights/:id/dismiss
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "insight-uuid",
-    "status": "DISMISSED"
-  }
-}
-```
-
----
-
-# 96. AI Insight Feedback
-
-```http
-POST /api/v1/ai/insights/:id/feedback
-```
-
-Request:
-
-```json
-{
-  "feedback": "HELPFUL"
-}
-```
-
-or:
-
-```json
-{
-  "feedback": "NOT_HELPFUL",
-  "comment": "This spending increase was intentional because of travel."
-}
-```
-
-Response:
-
-```http
-201 Created
-```
 
 ---
 
@@ -3391,7 +3053,8 @@ Request:
 
 ```json
 {
-  "message": "Why did I spend more this month?"
+  "question": "Why did I spend more this month?",
+  "horizon": 90
 }
 ```
 
@@ -3520,43 +3183,6 @@ After clarification, backend invokes deterministic scenario engine.
 
 ---
 
-# 100. Scenario AI Explanation
-
-```http
-POST /api/v1/ai/explain-scenario
-```
-
-Request:
-
-```json
-{
-  "scenario_id": "scenario-uuid",
-  "snapshot_id": "scenario-snapshot-uuid"
-}
-```
-
-The endpoint must load authoritative scenario results itself.
-
-The frontend must not send arbitrary baseline/scenario values for AI to trust.
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "summary": "The purchase is possible without creating an immediate negative balance, but it significantly reduces your financial buffer.",
-    "key_impacts": [
-      "Lowest projected balance falls from Rp8.2M to Rp1.1M.",
-      "Emergency fund completion is delayed by approximately three months.",
-      "Estimated cash runway falls from 4.1 to 1.9 months."
-    ]
-  }
-}
-```
-
----
-
 # 101. AI Provider Failure
 
 Example:
@@ -3622,88 +3248,6 @@ Response:
     "code": "RATE_LIMIT_EXCEEDED"
   },
   "message": "Please wait before sending another AI request."
-}
-```
-
----
-
-# 104. Notifications API
-
-Base:
-
-```text
-/api/v1/notifications
-```
-
-Endpoints:
-
-```text
-GET  /api/v1/notifications
-GET  /api/v1/notifications/unread-count
-POST /api/v1/notifications/:id/read
-POST /api/v1/notifications/read-all
-POST /api/v1/notifications/:id/archive
-```
-
----
-
-# 105. List Notifications
-
-```http
-GET /api/v1/notifications
-```
-
-Query:
-
-```text
-status
-type
-page
-limit
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "notification-uuid",
-      "type": "BUDGET_WARNING",
-      "title": "Food budget is almost reached",
-      "message": "You have used 82% of your Food & Dining budget.",
-      "status": "UNREAD",
-      "created_at": "2026-08-24T10:00:00Z"
-    }
-  ],
-  "meta": {
-    "page": 1,
-    "limit": 20,
-    "total": 8,
-    "total_pages": 1
-  }
-}
-```
-
----
-
-# 106. Mark Notification Read
-
-```http
-POST /api/v1/notifications/:id/read
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "notification-uuid",
-    "status": "READ",
-    "read_at": "2026-08-24T15:30:00Z"
-  }
 }
 ```
 
@@ -4681,61 +4225,12 @@ where appropriate.
 
 ---
 
-# 143. Swagger / OpenAPI
+# 143. Contract Source of Truth
 
-Savio must maintain an OpenAPI document.
-
-Recommended file:
-
-```text
-docs/api/openapi.yaml
-```
-
-Swagger UI may be served at:
-
-```text
-/api/docs
-```
-
-OpenAPI should document:
-
-```text
-authentication
-cookies
-CSRF header
-requests
-responses
-errors
-pagination
-schemas
-examples
-```
-
----
-
-# 144. OpenAPI Source of Truth
-
-Ideally:
-
-```text
-API implementation
-↔
-OpenAPI contract
-```
-
-remain synchronized.
-
-Possible strategies:
-
-```text
-spec-first
-```
-
-or:
-
-```text
-code annotations + generated spec
-```
+This Markdown contract is the current API documentation source of truth. No
+`docs/api/openapi.yaml` or Swagger UI is included. If OpenAPI generation is
+introduced, it must be generated or maintained alongside this contract and the
+registered route surface.
 
 For this project, either is acceptable if documentation is accurate.
 
@@ -5175,7 +4670,6 @@ Required endpoints:
 
 ```text
 Auth
-Profile
 Settings
 
 Accounts
@@ -5197,9 +4691,7 @@ Forecast
 Scenarios
 
 AI Categorization
-AI Insights
 AI Copilot
-AI Scenario Explanation
 
 Health
 Readiness
@@ -5215,8 +4707,6 @@ High value:
 Sessions UI APIs
 
 Notifications
-
-Insight Feedback
 
 AI Conversation Persistence
 
@@ -5255,13 +4745,6 @@ GET  /api/v1/auth/csrf
 ```
 
 ```text
-PROFILE
-
-GET   /api/v1/profile
-PATCH /api/v1/profile
-```
-
-```text
 SETTINGS
 
 GET   /api/v1/settings
@@ -5296,11 +4779,9 @@ CATEGORIES
 
 GET    /api/v1/categories
 POST   /api/v1/categories
-GET    /api/v1/categories/:id
 PATCH  /api/v1/categories/:id
 POST   /api/v1/categories/:id/archive
 POST   /api/v1/categories/:id/restore
-DELETE /api/v1/categories/:id
 ```
 
 ```text
@@ -5310,6 +4791,7 @@ GET   /api/v1/transactions
 POST  /api/v1/transactions
 GET   /api/v1/transactions/:id
 PATCH /api/v1/transactions/:id
+POST  /api/v1/transactions/:id/post
 POST  /api/v1/transactions/:id/void
 ```
 
@@ -5335,6 +4817,8 @@ POST /api/v1/recurring-transactions/:id/resume
 POST /api/v1/recurring-transactions/:id/end
 
 GET /api/v1/recurring-transactions/:id/occurrences
+POST /api/v1/recurring-occurrences/:id/confirm
+POST /api/v1/recurring-occurrences/:id/skip
 ```
 
 ```text
@@ -5344,7 +4828,7 @@ GET  /api/v1/budgets
 POST /api/v1/budgets
 GET  /api/v1/budgets/:id
 PATCH /api/v1/budgets/:id
-POST /api/v1/budgets/:id/archive
+POST /api/v1/budgets/:id/close
 ```
 
 ```text
@@ -5358,7 +4842,7 @@ PATCH /api/v1/goals/:id
 POST /api/v1/goals/:id/pause
 POST /api/v1/goals/:id/resume
 POST /api/v1/goals/:id/cancel
-POST /api/v1/goals/:id/mark-achieved
+POST /api/v1/goals/:id/achieve
 ```
 
 ```text
@@ -5374,10 +4858,7 @@ GET /api/v1/analytics/spending-changes
 ```text
 FORECAST
 
-GET  /api/v1/forecast
-POST /api/v1/forecast/calculate
-GET  /api/v1/forecast/history
-GET  /api/v1/forecast/:snapshotId
+GET /api/v1/forecast
 ```
 
 ```text
@@ -5396,25 +4877,32 @@ DELETE /api/v1/scenarios/:id/modifications/:modificationId
 POST /api/v1/scenarios/:id/calculate
 
 GET /api/v1/scenarios/:id/snapshots
-GET /api/v1/scenarios/:id/snapshots/:snapshotId
-
-POST /api/v1/scenarios/:id/archive
 ```
 
 ```text
 AI
 
-POST /api/v1/ai/categorize-transaction
-
-GET  /api/v1/ai/insights
-GET  /api/v1/ai/insights/:id
-POST /api/v1/ai/insights/:id/view
-POST /api/v1/ai/insights/:id/acknowledge
-POST /api/v1/ai/insights/:id/dismiss
-POST /api/v1/ai/insights/:id/feedback
-
+GET  /api/v1/ai/status
+POST /api/v1/ai/categorize
+POST /api/v1/ai/insight
 POST /api/v1/ai/copilot
-POST /api/v1/ai/explain-scenario
+POST /api/v1/ai/conversations
+GET  /api/v1/ai/conversations
+GET  /api/v1/ai/conversations/:id
+POST /api/v1/ai/conversations/:id/messages
+DELETE /api/v1/ai/conversations/:id
+
+GET   /api/v1/ai/config
+PATCH /api/v1/ai/config
+```
+
+```text
+TELEGRAM
+
+GET  /api/v1/telegram/config
+PATCH /api/v1/telegram/config
+POST /api/v1/telegram/config/register-webhook
+POST /api/v1/telegram/webhook/:secret
 ```
 
 ```text
@@ -5429,16 +4917,6 @@ SESSIONS
 GET    /api/v1/sessions
 DELETE /api/v1/sessions/:id
 DELETE /api/v1/sessions
-```
-
-```text
-NOTIFICATIONS
-
-GET  /api/v1/notifications
-GET  /api/v1/notifications/unread-count
-POST /api/v1/notifications/:id/read
-POST /api/v1/notifications/read-all
-POST /api/v1/notifications/:id/archive
 ```
 
 ```text
