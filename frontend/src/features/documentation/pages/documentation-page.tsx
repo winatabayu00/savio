@@ -16,7 +16,7 @@ export function DocumentationPage() {
           Savio
         </Link>
         <div className="d-flex gap-2">
-          <a className="btn btn-outline-primary" href="#api-docs">API docs</a>
+          <a className="btn btn-outline-primary" href="/docs">API docs</a>
           <Link className="btn btn-primary" to="/login">Open Savio</Link>
         </div>
       </header>
