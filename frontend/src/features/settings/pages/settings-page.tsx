@@ -451,7 +451,7 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
       <div className="mt-4 border-top pt-3">
         <h3 className="fs-13 fw-semibold text-dark mb-0">Webhook (pusat langsung)</h3>
         <p className="mb-2 mt-1 fs-12 text-muted">
-          Default: worker mengetik pesan setiap ±25 detik (long-poll). Untuk penerimaan yang
+          Default: worker mengambil pesan setiap ±25 detik (long-poll). Untuk penerimaan yang
           instan, daftarkan webhook ke URL <b>https</b> publik yang menuju ke backend Savio —
           misalnya tunnel{' '}
           <span className="fw-medium">ngrok http 8080</span> lalu pakai URL
@@ -497,8 +497,8 @@ function TelegramConfigSection({ canEdit }: { canEdit: boolean }) {
         )}
         {registerWebhook.isError && (
           <p className="mt-2 fs-12 text-danger mb-0">
-            Gagal mendaftarkan webhook. Pastikan URL https publik dan worker berjalan (proses
-            konfigurasi bot). Long-poll masih aktif.
+            Gagal mendaftarkan webhook. Pastikan URL https publik mengarah ke API Savio.
+            Worker tidak diperlukan untuk webhook. Long-poll masih aktif.
           </p>
         )}
       </div>
