@@ -27,7 +27,10 @@ type Settings struct {
 	LastUpdateID  int64     `gorm:"column:last_update_id"`
 	WebhookURL    string    `gorm:"column:webhook_url;type:text"`
 	WebhookSecret string    `gorm:"column:webhook_secret;type:text"`
-	UpdatedAt     time.Time `gorm:"column:updated_at"`
+	// ConfiguredByUserID is the last user who saved settings / registered the
+	// webhook; Telegram-driven transactions are attributed to them.
+	ConfiguredByUserID *uuid.UUID `gorm:"column:configured_by_user_id;type:uuid"`
+	UpdatedAt          time.Time  `gorm:"column:updated_at"`
 }
 
 func (Settings) TableName() string { return "telegram_settings" }
@@ -64,11 +67,13 @@ type UpdateInput struct {
 
 // UpdateSettings upserts partial configuration for the given workspace. An
 // empty bot token leaves the stored token untouched (masked round-trip safety).
-func (s *Service) UpdateSettings(ctx context.Context, workspaceID uuid.UUID, in *UpdateInput) (*Settings, error) {
+// userID is recorded as the configuring user for transaction attribution.
+func (s *Service) UpdateSettings(ctx context.Context, workspaceID, userID uuid.UUID, in *UpdateInput) (*Settings, error) {
 	st, err := s.settingsForWorkspace(ctx, workspaceID)
 	if err != nil {
 		return nil, err
 	}
+	st.ConfiguredByUserID = &userID
 	tokenChanged := false
 	if in.Enabled != nil {
 		st.Enabled = *in.Enabled
@@ -133,13 +138,29 @@ func generateSecret() string {
 // publicURL, or removes it when publicURL is empty. publicURL is the public
 // HTTPS base (typically a tunnel to this API); the real endpoint path is
 // derived here and the secret is generated once and stored.
-func (s *Service) RegisterWebhook(ctx context.Context, workspaceID uuid.UUID, publicURL string) (*Settings, error) {
+func (s *Service) RegisterWebhook(ctx context.Context, workspaceID, userID uuid.UUID, publicURL string) (*Settings, error) {
 	st, err := s.settingsForWorkspace(ctx, workspaceID)
 	if err != nil {
 		return nil, err
 	}
 	if st.BotToken == "" {
 		return nil, errs.Validation("simpan bot token dahulu sebelum mendaftarkan webhook")
+	}
+	if strings.TrimSpace(publicURL) != "" {
+		// Telegram keeps exactly one webhook per bot token. Without these gates
+		// the push silently lands in another workspace (or nowhere) and claimed
+		// updates are lost forever — polling is off while a webhook is set.
+		if !st.Enabled {
+			return nil, errs.Validation("aktifkan bot Telegram dahulu sebelum mendaftarkan webhook")
+		}
+		if strings.TrimSpace(st.ChatID) == "" {
+			return nil, errs.Validation("isi chat_id dahulu agar pesan hanya diterima dari chat kamu")
+		}
+		var conflict Settings
+		if err := s.db.WithContext(ctx).Where("bot_token = ? AND workspace_id <> ? AND webhook_url <> ''", st.BotToken, workspaceID).
+			Take(&conflict).Error; err == nil {
+			return nil, errs.Validation("bot token ini sudah terdaftar webhook di ruang kerja lain; gunakan bot yang berbeda")
+		}
 	}
 	client := newBotClient(st.BotToken)
 	if strings.TrimSpace(publicURL) == "" {
@@ -166,6 +187,7 @@ func (s *Service) RegisterWebhook(ctx context.Context, workspaceID uuid.UUID, pu
 		return nil, errs.WrapInternal(err, "register telegram webhook")
 	}
 	st.WebhookURL = strings.TrimRight(u.String(), "/")
+	st.ConfiguredByUserID = &userID
 	st.UpdatedAt = time.Now().UTC()
 	if err := s.upsert(ctx, st); err != nil {
 		return nil, err

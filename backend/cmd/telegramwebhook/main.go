@@ -38,18 +38,23 @@ func main() {
 
 	ctx := context.Background()
 	svc := telegram.NewService(db, nil, nil)
+	registered := 0
 	if *all {
 		var settings []telegram.Settings
 		if err := db.WithContext(ctx).Where("enabled = TRUE AND bot_token <> ''").Find(&settings).Error; err != nil {
 			log.Fatalf("list Telegram settings: %v", err)
 		}
 		for _, st := range settings {
-			if _, err := svc.RegisterWebhook(ctx, st.WorkspaceID, *url); err != nil {
-				log.Fatalf("register webhook for workspace %s: %v", st.WorkspaceID, err)
+			if _, err := svc.RegisterWebhook(ctx, st.WorkspaceID, uuid.Nil, *url); err != nil {
+				// ponytail: -all is a dev convenience; skip ineligible bots
+				// (disabled / no chat_id / token conflict) instead of aborting.
+				log.Printf("skip workspace %s: %v", st.WorkspaceID, err)
+				continue
 			}
 			log.Printf("webhook registered for workspace %s", st.WorkspaceID)
+			registered++
 		}
-		log.Printf("registered %d Telegram webhook(s)", len(settings))
+		log.Printf("registered %d Telegram webhook(s)", registered)
 		return
 	}
 	wsID, err := uuid.Parse(*workspace)
@@ -58,7 +63,7 @@ func main() {
 	}
 
 	if *url == "" {
-		st, err := svc.RegisterWebhook(ctx, wsID, "")
+		st, err := svc.RegisterWebhook(ctx, wsID, uuid.Nil, "")
 		if err != nil {
 			log.Fatalf("remove webhook: %v", err)
 		}
@@ -66,7 +71,7 @@ func main() {
 		return
 	}
 
-	st, err := svc.RegisterWebhook(ctx, wsID, *url)
+	st, err := svc.RegisterWebhook(ctx, wsID, uuid.Nil, *url)
 	if err != nil {
 		log.Fatalf("register webhook: %v", err)
 	}

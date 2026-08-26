@@ -82,7 +82,7 @@ func (h *Handler) UpdateConfig(c *gin.Context) {
 		httpx.Fail(c, err)
 		return
 	}
-	st, err := h.svc.UpdateSettings(c.Request.Context(), x.WorkspaceID, &UpdateInput{
+	st, err := h.svc.UpdateSettings(c.Request.Context(), x.WorkspaceID, x.UserID, &UpdateInput{
 		Enabled:  req.Enabled,
 		BotToken: req.BotToken,
 		ChatID:   req.ChatID,
@@ -142,7 +142,7 @@ func (h *Handler) RegisterWebhook(c *gin.Context) {
 		httpx.Fail(c, err)
 		return
 	}
-	st, err := h.svc.RegisterWebhook(c.Request.Context(), x.WorkspaceID, req.WebhookURL)
+	st, err := h.svc.RegisterWebhook(c.Request.Context(), x.WorkspaceID, x.UserID, req.WebhookURL)
 	if err != nil {
 		httpx.Fail(c, err)
 		return

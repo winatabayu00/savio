@@ -2941,7 +2941,8 @@ Response (bot token is never returned raw):
     "enabled": true,
     "bot_token_masked": "••••••••1234",
     "chat_id": "123456789",
-    "workspace_id": "00000000-0000-0000-0000-000000000000"
+    "workspace_id": "00000000-0000-0000-0000-000000000000",
+    "webhook_url": ""
   }
 }
 ```
@@ -2953,7 +2954,10 @@ PATCH /api/v1/telegram/config
 Partial update; omitted fields keep their current value. An empty/missing
 `bot_token` preserves the stored token (masked round-trip safety). `workspace_id`
 is always bound to the workspace of the configuring OWNER — never taken from the
-client.
+client. The authenticated user is recorded as the configuring user for Telegram
+transaction attribution. When the bot token changes and a webhook was already
+registered, the webhook is re-registered against Telegram with the new token.
+Response shape equals `GET /telegram/config`.
 
 Request:
 
@@ -2993,7 +2997,20 @@ Request:
 ```
 
 The `webhook_url` must be a public **https** address that routes to the Savio API
-process (Telegram rejects http). Response returns only the public base URL; the
+process (Telegram rejects http). Registration is rejected with `VALIDATION_ERROR`
+when any of these guards fail (Telegram keeps exactly one webhook per bot token,
+so violating them silently misroutes or loses updates):
+
+```text
+bot token not saved yet
+bot not enabled
+chat_id empty (messages from any chat would be accepted)
+another workspace already holds an active webhook for the same bot token
+```
+
+The registering user is stored as the configuring user; Telegram-driven expense
+transactions are attributed to them (falling back to the first active OWNER if
+they leave the workspace). Response returns only the public base URL; the
 generated route secret is never exposed through this API, e.g.
 
 ```json
@@ -3007,6 +3024,16 @@ generated route secret is never exposed through this API, e.g.
     "webhook_url": "https://xxx.ngrok-free.app"
   }
 }
+```
+
+Errors:
+
+```text
+400 VALIDATION_ERROR        bot token not saved / bot disabled / chat_id empty /
+                            bot token already registered as a webhook in another
+                            workspace / webhook_url not a public https URL
+403 PERMISSION_DENIED       user is not a workspace OWNER
+500 INTERNAL_ERROR          Telegram setWebhook/deleteWebhook call failed
 ```
 
 ```http
@@ -3030,7 +3057,9 @@ Messages from the authorized `chat_id` are handled as:
 - `/start` / `/help` → usage instructions reply.
 - Free-form text with an amount at the end (e.g. `chocolate hazelnut dutch 24000`,
   `grab food 24.500`, `pulsa 50rb`, `kopi 2.5jt`) → creates a POSTED
-  EXPENSE transaction in the bound workspace, sourced `TELEGRAM`, category
+  EXPENSE transaction in the bound workspace, sourced `TELEGRAM`, attributed to
+  the configuring user (the last OWNER/MEMBER who saved the config or registered
+  the webhook; falls back to the workspace's first active OWNER), category
   suggested by the AI categorizer (deterministic keyword fallback when AI is
    disabled — AGENTS #77). The categorizer may select an account; otherwise the
    workspace's first ACTIVE account is charged. The transaction is dated today in

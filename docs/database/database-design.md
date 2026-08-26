@@ -355,6 +355,8 @@ configures and owns its own bot row, so one workspace never blocks another:
 - `last_update_id` — best-effort Telegram long-poll offset.
 - `webhook_url` / `webhook_secret` — optional push mode (registered webhook URL
   + the random path/header secret guarding the unauthenticated endpoint).
+- `configured_by_user_id` → `users(id)` — the user who last saved the config /
+  registered the webhook; Telegram-driven transactions are attributed to them.
 
 `telegram_processed` has a PRIMARY KEY `(workspace_id, update_id)` that guards
 long-poll exactly-once per bot: an update is claimed

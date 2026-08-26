@@ -115,7 +115,7 @@ func (s *Service) handle(ctx context.Context, st *Settings, u Update, client *bo
 	}
 	wsID := st.WorkspaceID
 
-	authorizer, userName, err := s.ownerUserID(ctx, wsID)
+	authorizer, userName, err := s.authorizerFor(ctx, wsID, st.ConfiguredByUserID)
 	if err != nil {
 		return client.sendMessage(ctx, chatID, "Gagal membaca ruang kerja. Pastikan konfigurasi Telegram valid.")
 	}
@@ -184,6 +184,27 @@ func (s *Service) ownerUserID(ctx context.Context, wsID uuid.UUID) (uuid.UUID, s
 		Where("wm.workspace_id = ? AND wm.role = 'OWNER' AND wm.status = 'ACTIVE'", wsID).
 		Order("wm.created_at").Limit(1).Take(&owner).Error
 	return owner.UserID, owner.Name, err
+}
+
+// authorizerFor attributes Telegram-driven transactions to the user who
+// configured the bot (the logged-in user at setup), falling back to the first
+// OWNER when they left the workspace.
+func (s *Service) authorizerFor(ctx context.Context, wsID uuid.UUID, preferred *uuid.UUID) (uuid.UUID, string, error) {
+	if preferred != nil && *preferred != uuid.Nil {
+		var m struct {
+			UserID uuid.UUID
+			Name   string
+		}
+		err := s.db.WithContext(ctx).Table("workspace_memberships wm").
+			Select("wm.user_id, u.name").
+			Joins("JOIN users u ON u.id = wm.user_id").
+			Where("wm.workspace_id = ? AND wm.user_id = ? AND wm.status = 'ACTIVE'", wsID, *preferred).
+			Take(&m).Error
+		if err == nil {
+			return m.UserID, m.Name, nil
+		}
+	}
+	return s.ownerUserID(ctx, wsID)
 }
 
 func (s *Service) defaultAccountID(ctx context.Context, wsID uuid.UUID) (uuid.UUID, error) {
