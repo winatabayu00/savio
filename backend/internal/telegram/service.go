@@ -115,7 +115,7 @@ func (s *Service) handle(ctx context.Context, st *Settings, u Update, client *bo
 	}
 	wsID := st.WorkspaceID
 
-	authorizer, err := s.ownerUserID(ctx, wsID)
+	authorizer, userName, err := s.ownerUserID(ctx, wsID)
 	if err != nil {
 		return client.sendMessage(ctx, chatID, "Gagal membaca ruang kerja. Pastikan konfigurasi Telegram valid.")
 	}
@@ -148,7 +148,7 @@ func (s *Service) handle(ctx context.Context, st *Settings, u Update, client *bo
 	if err != nil {
 		return err
 	}
-	view, err := s.tx.Create(ctx, wsID, authorizer, &transactions.CreateInput{
+	_, err = s.tx.Create(ctx, wsID, authorizer, &transactions.CreateInput{
 		AccountID:       acctID,
 		CategoryID:      catID,
 		Type:            string(transactions.TypeExpense),
@@ -161,20 +161,29 @@ func (s *Service) handle(ctx context.Context, st *Settings, u Update, client *bo
 	if err != nil {
 		return client.sendMessage(ctx, chatID, fmt.Sprintf("Gagal mencatat pengeluaran: %s", err.Error()))
 	}
+	name := strings.TrimSpace(userName)
+	if name == "" {
+		name = "teman"
+	}
 	reply := fmt.Sprintf(
-		"✅ %s · %s\n%s\nID: %s",
-		money.FormatMinorUnits(amountMinor), catName, desc, view.ID)
+		"✅ Halo %s, pencatatan pengeluaran sebesar %s sudah berhasil dicatat.\n\nKategori: %s\nCatatan: %s",
+		name, money.FormatMinorUnits(amountMinor), catName, desc)
 	return client.sendMessage(ctx, chatID, reply)
 }
 
 const helpText = "Cara pakai:\nKirim nama pengeluaran + nominal di akhir.\nContoh: `chocolate hazelnut dutch 24000`\nNominal boleh pakai titik/koma: `grab food 24.500`, `pulsa 50rb`, `kopi 2.5jt`."
 
-func (s *Service) ownerUserID(ctx context.Context, wsID uuid.UUID) (uuid.UUID, error) {
-	var owner struct{ UserID uuid.UUID }
-	err := s.db.WithContext(ctx).Table("workspace_memberships").
-		Where("workspace_id = ? AND role = 'OWNER' AND status = 'ACTIVE'", wsID).
-		Order("created_at").Limit(1).Select("user_id").Take(&owner).Error
-	return owner.UserID, err
+func (s *Service) ownerUserID(ctx context.Context, wsID uuid.UUID) (uuid.UUID, string, error) {
+	var owner struct {
+		UserID uuid.UUID
+		Name   string
+	}
+	err := s.db.WithContext(ctx).Table("workspace_memberships wm").
+		Select("wm.user_id, u.name").
+		Joins("JOIN users u ON u.id = wm.user_id").
+		Where("wm.workspace_id = ? AND wm.role = 'OWNER' AND wm.status = 'ACTIVE'", wsID).
+		Order("wm.created_at").Limit(1).Take(&owner).Error
+	return owner.UserID, owner.Name, err
 }
 
 func (s *Service) defaultAccountID(ctx context.Context, wsID uuid.UUID) (uuid.UUID, error) {
