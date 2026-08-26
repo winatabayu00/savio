@@ -3509,7 +3509,7 @@ This dataset should make the demo flow meaningful.
 Recommended migration files:
 
 ```text
-backend/migrations/
+backend/internal/migrations/
 
 000001_create_users.up.sql
 000001_create_users.down.sql
