@@ -70,10 +70,14 @@ PostgreSQL
 Additional infrastructure:
 
 Redis
-Go Worker
-MinIO
+Go polling worker
 AI Provider
 ```
+
+MinIO is provisioned by local Compose but has no backend integration yet. Redis is
+currently used for rate limiting; the worker directly polls PostgreSQL and calls
+shared services. Redis queue/Asynq processing remains future architecture, not
+current behavior.
 
 ---
 
@@ -111,20 +115,15 @@ AI Provider
                └────────────────┘              └─────────────────┘
 
                        │
-                       │ async jobs
+                        │ direct polling / service calls
                        ▼
                  ┌─────────────┐
-                 │    Redis    │
-                 └──────┬──────┘
-                        │
-                        ▼
-                 ┌─────────────┐
-                 │  Go Worker  │
-                 └──────┬──────┘
+                  │  Go Worker  │
+                  └──────┬──────┘
                         │
               ┌─────────┼─────────┐
               ▼         ▼         ▼
-         PostgreSQL   MinIO   AI Provider
+                    PostgreSQL
 ```
 
 ---
