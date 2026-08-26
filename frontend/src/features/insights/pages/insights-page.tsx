@@ -20,10 +20,10 @@ function monthBounds(): { from: string; to: string } {
 
 function FactCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card h-100">
+    <div className="card h-100 insight-fact-card">
       <div className="card-body">
-        <div className="fs-13 text-muted">{label}</div>
-        <div className="mt-1 fs-16 fw-semibold text-dark">{value}</div>
+        <div className="insight-fact-label">{label}</div>
+        <div className="insight-fact-value">{value}</div>
       </div>
     </div>
   );
@@ -42,40 +42,50 @@ export function InsightsPage() {
     status?.enabled === false ||
     error instanceof ApiError && error.status === 503 ||
     (error instanceof ApiError && error.status === 422);
+  const hasCashflow = cash && (cash.income !== '0' || cash.expense !== '0');
 
   return (
     <div>
-      <h1 className="fs-20 fw-bolder mb-0">AI Insights</h1>
-      <p className="fs-13 text-muted mb-0 mt-1">
-        Explained from real, deterministic numbers. The facts come first; AI only interprets them.
-      </p>
-
-      {dismissed ? (
-        <div className="mt-4">
-          <EmptyState
-            title="Insight dismissed"
-            description="Your cashflow facts below never depend on AI availability."
-            action={<Button variant="secondary" onClick={() => setDismissed(false)}>Show insights again</Button>}
-          />
+      <section className="insights-intro" aria-labelledby="insights-heading">
+        <div>
+          <span className="insights-eyebrow">Cashflow intelligence</span>
+          <h1 id="insights-heading">AI Insights</h1>
+          <p>Read the month through verified cashflow facts. AI adds context, never changes the numbers.</p>
         </div>
-      ) : (
-        <>
-          {isLoading ? <p className="mt-4 fs-13 text-muted">Summarizing your month…</p> : null}
+        <span className={`insights-status ${aiUnavailable ? 'is-offline' : ''}`}>
+          <span aria-hidden="true" />
+          {aiUnavailable ? 'AI explanation offline' : 'Facts stay authoritative'}
+        </span>
+      </section>
+
+      <>
+          {isLoading ? (
+            <div className="insights-skeleton mt-4" aria-label="Memuat insight">
+              <span /><span /><span />
+            </div>
+          ) : null}
           {isError && !aiUnavailable ? (
-            <div className="mt-4 alert alert-danger">
-              <p>We could not generate this insight.</p>
-              <Button variant="secondary" className="mt-2" onClick={() => void refetch()}>Try again</Button>
+            <div className="mt-4 alert alert-danger d-flex align-items-center justify-content-between gap-3" role="alert">
+              <span>Insight tidak dapat dibuat. Data keuangan Anda tetap aman.</span>
+              <Button variant="secondary" onClick={() => void refetch()}>Coba lagi</Button>
             </div>
           ) : null}
           {aiUnavailable ? (
-            <div className="mt-4 alert alert-warning">
-              AI is unavailable right now. Your financial facts and features still work — the explanatory
-              narrative is temporarily offline.
+            <div className="mt-4 alert alert-warning" role="status">
+              AI sementara tidak tersedia. Ringkasan cashflow di bawah tetap berasal dari data keuangan Anda.
             </div>
           ) : null}
 
           {cash ? (
-            <div className="row g-4 mt-4">
+            <section className="mt-4" aria-labelledby="cashflow-facts-heading">
+              <div className="insights-section-heading">
+                <div>
+                  <span>Actual</span>
+                  <h2 id="cashflow-facts-heading">Cashflow bulan ini</h2>
+                </div>
+                <p>Transaksi POSTED saja</p>
+              </div>
+              <div className="row g-3">
               <div className="col-12 col-md-4">
                 <FactCard label="Income this month" value={formatAmountString(cash.income, currency)} />
               </div>
@@ -85,41 +95,53 @@ export function InsightsPage() {
               <div className="col-12 col-md-4">
                 <FactCard label="Net cashflow" value={formatAmountString(cash.net, currency)} />
               </div>
-            </div>
+              </div>
+            </section>
           ) : null}
 
-          {insight ? (
-            <div className="card card-body mt-4">
-              <div className="d-flex align-items-start justify-content-between">
-                <span className="badge bg-soft-primary text-primary">
-                  AI-generated · verify against your facts
-                </span>
-                <Button variant="ghost" onClick={() => setDismissed(true)}>Dismiss</Button>
+          {insight && !dismissed ? (
+            <section className="card mt-4 insights-narrative" aria-labelledby="insight-headline">
+              <div className="card-body">
+                <div className="d-flex align-items-start justify-content-between gap-3">
+                  <div>
+                    <span className="insights-eyebrow">AI interpretation</span>
+                    <p className="insights-signal mb-0">{insight.signal}</p>
+                  </div>
+                  <Button variant="ghost" aria-label="Dismiss insight" onClick={() => setDismissed(true)}>Dismiss</Button>
+                </div>
+                <h2 id="insight-headline">{insight.headline}</h2>
+                <p className="insight-detail">{insight.detail}</p>
               </div>
-              <h2 className="mt-4 fs-16 fw-semibold text-dark">{insight.headline}</h2>
-              <p className="mt-2 fs-13 text-secondary">{insight.detail}</p>
               {insight.related_facts.length > 0 ? (
-                <div className="mt-4 border-top pt-4">
-                  <h3 className="fs-12 text-uppercase fw-semibold text-muted mb-3">Supporting facts</h3>
-                  <ul className="mt-2 d-flex flex-column gap-1 fs-13 text-secondary">
+                <div className="insight-supporting-facts">
+                  <h3>Supporting facts</h3>
+                  <ul>
                     {insight.related_facts.map((f, i) => (
                       <li key={i}>{f}</li>
                     ))}
                   </ul>
                 </div>
               ) : null}
+            </section>
+          ) : null}
+
+          {dismissed ? (
+            <div className="mt-4 alert alert-light d-flex align-items-center justify-content-between gap-3" role="status">
+              <span>Interpretasi AI disembunyikan. Cashflow aktual tetap terlihat di atas.</span>
+              <Button variant="secondary" onClick={() => setDismissed(false)}>Tampilkan lagi</Button>
             </div>
           ) : null}
 
-          {!isError && !insight ? (
-            <div className="card card-body mt-4 p-5 text-center">
-              <p className="mx-auto fs-13 text-muted">
-                Insights need cashflow data. Add income and expenses, then revisit this page.
-              </p>
+          {!isLoading && !isError && !insight && !aiUnavailable ? (
+            <div className="mt-4">
+              <EmptyState
+                title={hasCashflow ? 'Insight belum tersedia' : 'Belum ada cashflow untuk dibaca'}
+                description={hasCashflow ? 'Coba buat insight lagi untuk periode ini.' : 'Tambahkan income atau expense yang sudah diposting untuk mulai melihat pola cashflow.'}
+                action={hasCashflow ? <Button variant="secondary" onClick={() => void refetch()}>Coba lagi</Button> : undefined}
+              />
             </div>
           ) : null}
-        </>
-      )}
+      </>
     </div>
   );
 }
