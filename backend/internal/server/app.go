@@ -14,6 +14,7 @@ import (
 	"github.com/savio/savio/backend/internal/platform/config"
 	"github.com/savio/savio/backend/internal/platform/mw"
 	"github.com/savio/savio/backend/internal/platform/redisclient"
+	"github.com/savio/savio/backend/internal/server/apidocs"
 )
 
 // App is the shared application dependency container for the HTTP API process.
@@ -36,6 +37,7 @@ func New(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *App {
 	app := &App{Config: cfg, DB: db, Redis: rdb, Engine: engine}
 	app.registerCoreRoutes()
 	registerModules(app)
+	apidocs.Register(engine)
 	return app
 }
 

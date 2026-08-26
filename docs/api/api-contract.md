@@ -892,6 +892,30 @@ The session must belong to the authenticated user.
 
 ---
 
+# 29a. Revoke All Other Sessions
+
+```http
+DELETE /api/v1/sessions
+```
+
+Revokes every session belonging to the authenticated user except the current
+one. The current session stays signed in.
+
+Response:
+
+```http
+200 OK
+```
+
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+---
+
 # 32. Settings Endpoints
 
 Base:
@@ -1002,12 +1026,13 @@ GET /api/v1/accounts
 Query parameters:
 
 ```text
-status
-type
-sort
-order
-page
-limit
+status   optional  ACTIVE | ARCHIVED
+type     optional  CASH | BANK | EWALLET | SAVINGS
+search   optional  name substring match
+sort     allowlisted  name | type | opening_balance | created_at
+order    asc | desc
+page     default 1
+limit    default 20, max 100
 ```
 
 Example:
@@ -1027,11 +1052,15 @@ Response:
       "name": "BCA Main",
       "type": "BANK",
       "currency": "IDR",
-      "initial_balance": "10000000.00",
-      "current_balance": "14750000.00",
+      "opening_balance": 1000000000,
+      "derived_balance": 1475000000,
       "institution_name": "BCA",
+      "description": "Primary salary account",
       "status": "ACTIVE",
-      "version": 3
+      "version": 3,
+      "archived_at": null,
+      "created_at": "2026-08-01T02:00:00Z",
+      "updated_at": "2026-08-25T09:30:00Z"
     }
   ],
   "meta": {
@@ -1042,6 +1071,14 @@ Response:
   }
 }
 ```
+
+Balance fields (`opening_balance`, `derived_balance`) are integer minor units.
+`derived_balance` = opening balance + posted ledger effects and is always
+reconstructable from history.
+
+> Known deviation: account endpoints currently emit minor-unit integers for
+> balances while other modules use decimal strings. This deviates from the
+> money-as-string rule (#17) and should be normalized in a dedicated task.
 
 ---
 
@@ -1058,11 +1095,14 @@ Request:
   "name": "BCA Main",
   "type": "BANK",
   "currency": "IDR",
-  "initial_balance": "10000000.00",
+  "opening_balance": 1000000000,
   "institution_name": "BCA",
   "description": "Primary salary account"
 }
 ```
+
+`opening_balance` is minor units as an integer and must be >= 0. `currency`
+must match the workspace base currency.
 
 Success:
 
@@ -1080,10 +1120,15 @@ Response:
     "name": "BCA Main",
     "type": "BANK",
     "currency": "IDR",
-    "initial_balance": "10000000.00",
-    "current_balance": "10000000.00",
+    "opening_balance": 1000000000,
+    "derived_balance": 1000000000,
+    "institution_name": "BCA",
+    "description": "Primary salary account",
     "status": "ACTIVE",
-    "version": 1
+    "version": 1,
+    "archived_at": null,
+    "created_at": "2026-08-25T02:00:00Z",
+    "updated_at": "2026-08-25T02:00:00Z"
   },
   "message": "Account created successfully."
 }
@@ -1097,29 +1142,8 @@ Response:
 GET /api/v1/accounts/:id
 ```
 
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "account-uuid",
-    "name": "BCA Main",
-    "type": "BANK",
-    "currency": "IDR",
-    "initial_balance": "10000000.00",
-    "current_balance": "14750000.00",
-    "status": "ACTIVE",
-    "version": 3,
-    "summary": {
-      "income_this_month": "12000000.00",
-      "expense_this_month": "7250000.00",
-      "incoming_transfer_this_month": "0.00",
-      "outgoing_transfer_this_month": "0.00"
-    }
-  }
-}
-```
+Returns the same account view as the list endpoint, workspace-scoped. A
+foreign ID returns `404 RESOURCE_NOT_FOUND` (never cross-workspace data).
 
 ---
 
@@ -1129,29 +1153,22 @@ Response:
 PATCH /api/v1/accounts/:id
 ```
 
-Request:
+Request (all fields optional):
 
 ```json
 {
   "name": "BCA Personal",
+  "type": "BANK",
   "institution_name": "BCA",
   "description": "Primary personal account",
   "version": 3
 }
 ```
 
-Success response includes incremented version:
+`opening_balance` is not editable here; balance corrections go through
+reconciliation (#42). Providing `version` enables optimistic locking.
 
-```json
-{
-  "success": true,
-  "data": {
-    "id": "account-uuid",
-    "name": "BCA Personal",
-    "version": 4
-  }
-}
-```
+Success response returns the full updated view with incremented version.
 
 Version conflict:
 
@@ -1177,13 +1194,8 @@ Version conflict:
 POST /api/v1/accounts/:id/archive
 ```
 
-Request:
-
-```json
-{
-  "version": 4
-}
-```
+Archived accounts remain available for historical display but reject new
+ordinary financial activity.
 
 Response:
 
@@ -1205,14 +1217,6 @@ Response:
 
 ```http
 POST /api/v1/accounts/:id/restore
-```
-
-Request:
-
-```json
-{
-  "version": 5
-}
 ```
 
 Response:
@@ -1241,18 +1245,16 @@ Request:
 ```json
 {
   "actual_balance": "5000000.00",
-  "reason": "Matched balance with bank application.",
-  "version": 6
+  "reason": "Matched balance with bank application."
 }
 ```
 
-Backend calculates:
+`actual_balance` uses a decimal string. `reason` defaults to
+"Reconciliation adjustment" when omitted. The backend computes the difference
+against `derived_balance` and records a signed ADJUSTMENT transaction — it
+never rewrites history.
 
-```text
-current tracked balance
-vs
-actual balance
-```
+If the tracked balance already matches, returns `409 BUSINESS_CONFLICT`.
 
 Response:
 
@@ -1260,18 +1262,13 @@ Response:
 {
   "success": true,
   "data": {
-    "account": {
-      "id": "account-uuid",
-      "current_balance": "5000000.00",
-      "version": 7
-    },
     "adjustment": {
       "id": "transaction-uuid",
       "type": "ADJUSTMENT",
-      "direction": "IN",
       "amount": "200000.00",
-      "reason": "Matched balance with bank application."
-    }
+      "status": "POSTED"
+    },
+    "difference": "200000.00"
   }
 }
 ```
@@ -2355,7 +2352,8 @@ Finance engine recalculates all derived values.
 GET /api/v1/dashboard
 ```
 
-Recommended as a composite endpoint.
+Composite endpoint. No query parameters; the period is the current calendar
+month (UTC) and upcoming activity covers the next 30 days.
 
 Response:
 
@@ -2363,53 +2361,69 @@ Response:
 {
   "success": true,
   "data": {
-    "period": {
-      "start": "2026-08-01",
-      "end": "2026-08-31"
-    },
-    "balance": {
-      "total": "16250000.00",
-      "currency": "IDR"
-    },
+    "total_balance": "16250000",
+    "accounts": [
+      {
+        "id": "account-uuid",
+        "name": "BCA Main",
+        "type": "BANK",
+        "currency": "IDR",
+        "opening_balance": "10000000",
+        "derived_balance": "12500000",
+        "institution_name": null,
+        "description": null,
+        "status": "ACTIVE",
+        "version": 1,
+        "archived_at": null,
+        "created_at": "2026-08-01T02:00:00Z",
+        "updated_at": "2026-08-25T09:30:00Z"
+      }
+    ],
     "cashflow": {
       "income": "12000000.00",
       "expense": "8400000.00",
-      "net": "3600000.00",
-      "savings_rate_percent": "30.00"
-    },
-    "budgets": {
-      "active_count": 4,
-      "warning_count": 1,
-      "exceeded_count": 0
-    },
-    "goals": {
-      "active_count": 2,
-      "at_risk_count": 1
+      "net": "3600000.00"
     },
     "upcoming": [
       {
-        "date": "2026-08-25",
-        "name": "Salary",
-        "direction": "IN",
-        "amount": "12000000.00"
+        "id": "occurrence-uuid",
+        "recurring_id": "recurring-uuid",
+        "due_date": "2026-08-28",
+        "type": "EXPENSE",
+        "amount": "1500000.00",
+        "account_name": "BCA Main",
+        "description": "Internet bill"
       }
     ],
-    "forecast": {
-      "minimum_balance": "3200000.00",
-      "ending_balance": "12000000.00",
-      "confidence": "MEDIUM"
-    },
-    "insights": [
+    "recent": [
       {
-        "id": "insight-uuid",
-        "type": "SPENDING_ANOMALY",
-        "severity": "MEDIUM",
-        "title": "Dining spending increased"
+        "id": "transaction-uuid",
+        "type": "EXPENSE",
+        "amount": "85000.00",
+        "transaction_date": "2026-08-25",
+        "description": "Lunch",
+        "account_name": "BCA Main",
+        "category_name": "Food & Dining",
+        "status": "POSTED"
       }
     ]
   }
 }
 ```
+
+Field notes:
+
+```text
+total_balance  opening balances + posted ledger effects across all accounts
+cashflow       POSTED INCOME/EXPENSE for the current month; excludes
+               transfers, voided transactions and adjustments
+upcoming       PENDING recurring occurrences due within 30 days (max 20)
+recent         latest ledger activity for the workspace feed
+```
+
+Budget/goal/forecast/insight widgets on the dashboard are composed client-side
+from their own endpoints (`/api/v1/budgets`, `/api/v1/goals`,
+`/api/v1/forecast`, `/api/v1/ai/insight`), not from this response.
 
 ---
 
@@ -2506,10 +2520,19 @@ Response:
 GET /api/v1/analytics/period-comparison
 ```
 
+Query:
+
+```text
+from          required  YYYY-MM-DD (current period start)
+to            required  YYYY-MM-DD (current period end)
+compare_from  required  YYYY-MM-DD (baseline period start)
+compare_to    required  YYYY-MM-DD (baseline period end)
+```
+
 Example:
 
 ```http
-GET /api/v1/analytics/period-comparison?period=current_month&baseline=previous_3_month_average
+GET /api/v1/analytics/period-comparison?from=2026-08-01&to=2026-08-31&compare_from=2026-07-01&compare_to=2026-07-31
 ```
 
 Response:
@@ -2519,25 +2542,83 @@ Response:
   "success": true,
   "data": {
     "current": {
-      "expense": "8400000.00"
+      "income": "12000000.00",
+      "expense": "8400000.00",
+      "net": "3600000.00"
     },
-    "baseline": {
-      "expense": "6800000.00"
+    "previous": {
+      "income": "12000000.00",
+      "expense": "6800000.00",
+      "net": "5200000.00"
     },
-    "difference": {
-      "amount": "1600000.00",
-      "percent": "23.53"
-    },
-    "drivers": [
-      {
-        "category": "Food & Dining",
-        "difference": "700000.00"
-      },
-      {
-        "category": "Shopping",
-        "difference": "550000.00"
-      }
-    ]
+    "income_delta_percent": null,
+    "expense_delta_percent": "23.53"
+  }
+}
+```
+
+Delta percent is `null` when the baseline value is zero (division by zero is
+never emitted). Validation failure for any missing/malformed date returns
+`422 VALIDATION_ERROR`.
+
+---
+
+# 78b. Spending Changes Analytics
+
+```http
+GET /api/v1/analytics/spending-changes
+```
+
+Query:
+
+```text
+from          required  YYYY-MM-DD (current period)
+to            required  YYYY-MM-DD (current period)
+compare_from  required  YYYY-MM-DD (baseline period)
+compare_to    required  YYYY-MM-DD (baseline period)
+```
+
+Returns per-category expense comparison between two periods. Categories where
+both periods are zero are omitted.
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "category_id": "food-category-uuid",
+      "category_name": "Food & Dining",
+      "current": "2400000.00",
+      "previous": "1800000.00",
+      "delta": "600000.00",
+      "delta_percent": "33.33"
+    }
+  ]
+}
+```
+
+`delta_percent` is `null` when the previous period total is zero.
+
+---
+
+# 78c. Recurring Expenses Summary
+
+```http
+GET /api/v1/analytics/recurring-expenses
+```
+
+No query parameters. Summarizes ACTIVE recurring rules for the workspace.
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "active_rules": 5,
+    "estimated_monthly": "4500000.00"
   }
 }
 ```
@@ -2550,9 +2631,73 @@ Response:
 GET /api/v1/forecast?horizon=90
 ```
 
-`horizon` is optional and accepts `30`, `60`, `90`, `180`, or `365`; default is
-`90`. The endpoint computes and returns a deterministic forecast immediately. It
-does not persist forecast snapshots and has no history or snapshot routes.
+Query:
+
+```text
+horizon  optional  one of 30, 60, 90, 180, 365; default 90
+```
+
+Invalid horizon returns `422 VALIDATION_ERROR`.
+
+The endpoint computes and returns a deterministic forecast immediately. It does
+not persist forecast snapshots and has no history or snapshot routes.
+
+Inputs (all computed server-side): current liquid balance (opening balances +
+posted ledger effects), active recurring rules (`SCHEDULED`), future-dated
+posted transactions (`KNOWN`), and trailing 90-day average variable daily
+expense (`ESTIMATED`). No LLM involvement.
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "opening_balance": "16250000.00",
+    "ending_balance": "12000000.00",
+    "minimum_balance": "3200000.00",
+    "minimum_balance_date": "2026-09-18",
+    "projected_income": "24000000.00",
+    "projected_expense": "28250000.00",
+    "timeline": [
+      {
+        "date": "2026-08-26",
+        "balance": "16250000.00"
+      }
+    ],
+    "events": [
+      {
+        "date": "2026-09-01",
+        "type": "SCHEDULED",
+        "kind": "INCOME",
+        "amount": "12000000.00",
+        "description": "Monthly Salary"
+      }
+    ],
+    "confidence": "MEDIUM",
+    "assumptions": {
+      "variable_expense_daily": "85000.00",
+      "baseline_days": 90,
+      "active_recurring_rules": 5,
+      "confidence_basis": "recurring rules + 90-day variable spend history"
+    },
+    "calculation_version": "1",
+    "stale": false
+  }
+}
+```
+
+Field notes:
+
+```text
+event.type     KNOWN | SCHEDULED | ESTIMATED | ASSUMED
+event.kind     INCOME | EXPENSE
+confidence     deterministic metadata derived from data quality;
+               never generated by an LLM
+stale          true when financial records changed after computation began;
+               clients should refetch before trusting the result
+timeline       daily balance points across the horizon
+```
 
 ---
 
@@ -2793,6 +2938,36 @@ These values are deterministic.
 
 ---
 
+# 90a. Scenario Snapshots
+
+```http
+GET /api/v1/scenarios/:id/snapshots
+```
+
+Returns the persisted baseline snapshot captured for the scenario, plus its
+staleness flag. Workspace-scoped; a foreign scenario ID returns
+`404 RESOURCE_NOT_FOUND`.
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "baseline": {
+      "ending_balance": "12000000.00",
+      "minimum_balance": "3200000.00"
+    },
+    "is_stale": false
+  }
+}
+```
+
+`baseline` is the frozen deterministic forecast at calculation time and never
+mutates real finance state.
+
+---
+
 # 91. AI API
 
 Base:
@@ -2819,7 +2994,8 @@ GET  /api/v1/ai/config          (OWNER only)
 PATCH /api/v1/ai/config         (OWNER only)
 ```
 
-Automatic insight generation may run through background jobs rather than public HTTP endpoints.
+On-demand insight generation is available via `POST /api/v1/ai/insight`
+(#92a). Automatic background generation is a future concern.
 
 Runtime AI configuration replaces the `AI_*` environment variables. It is stored in a
 database singleton row (`ai_settings`), seeded once from env on first startup. Changes
@@ -2863,7 +3039,58 @@ This endpoint does not create or modify a transaction.
 
 ---
 
-# 92a. AI Configuration
+# 92a. AI Insight
+
+```http
+POST /api/v1/ai/insight
+```
+
+Generates a bounded natural-language explanation from deterministic analytics
+facts (cashflow, period comparison, top categories). The Finance Engine
+calculates first; the LLM only interprets.
+
+Request:
+
+```json
+{
+  "from": "2026-08-01",
+  "to": "2026-08-31",
+  "compare_from": "2026-07-01",
+  "compare_to": "2026-07-31"
+}
+```
+
+`from` and `to` are required (`YYYY-MM-DD`). `compare_from`/`compare_to`
+default to `from`/`to` when omitted. Missing or malformed dates return
+`422 VALIDATION_ERROR`.
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "headline": "Spending rose 23% versus last month",
+    "detail": "Food & Dining drove most of the increase ...",
+    "signal": "EXPENSE_INCREASE",
+    "related_facts": [
+      "income=12000000.00",
+      "expense=8400000.00",
+      "expense_delta_pct=23.53"
+    ]
+  }
+}
+```
+
+`related_facts` carries the deterministic figures the explanation is grounded
+in so the UI can show supporting facts above the AI narrative. Rate limited to
+10 requests per minute per IP; exceeding it returns `429 RATE_LIMITED`. AI
+unavailable returns `503 AI_PROVIDER_UNAVAILABLE`; all deterministic endpoints
+remain unaffected.
+
+---
+
+# 92b. AI Configuration
 
 ```http
 GET /api/v1/ai/config
@@ -2924,7 +3151,7 @@ Errors:
 
 ---
 
-# 92b. Telegram Recap Configuration
+# 92c. Telegram Recap Configuration
 
 ```http
 GET /api/v1/telegram/config
