@@ -141,8 +141,6 @@ docs/database/database-design.md
 
 docs/api/api-contract.md
 
-docs/api/openapi.yaml
-
 docs/architecture/system-architecture.md
 
 docs/architecture/frontend-architecture.md
@@ -2167,8 +2165,6 @@ update:
 
 ```text
 docs/api/api-contract.md
-
-docs/api/openapi.yaml
 
 frontend types/tests
 ```

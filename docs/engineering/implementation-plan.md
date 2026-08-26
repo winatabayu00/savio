@@ -801,8 +801,7 @@ docs/
 │   └── database-design.md
 │
 ├── api/
-│   ├── api-contract.md
-│   └── openapi.yaml
+│   └── api-contract.md
 │
 ├── engineering/
 │   ├── security.md
@@ -1812,8 +1811,8 @@ Verification:
   go test ./...                      (all backend pkgs pass)
   go test -race ./internal/workspaces/ ./internal/auth/
 
-Docs: docs/api/api-contract.md section 171 + endpoint summary; no OpenAPI
-file exists in the repo yet (per docs/api listing) so no openapi.yaml update.
+Docs: docs/api/api-contract.md section 171 + endpoint summary (the Markdown
+contract is the only API documentation artifact; no openapi.yaml exists).
 Frontend layer arrives in M06.
 ```
 
@@ -5285,12 +5284,12 @@ Ensure repository explains itself to reviewers.
 
 ---
 
-## OpenAPI
+## API Contract
 
-Finalize:
+Finalize the single Markdown contract:
 
 ```text
-docs/api/openapi.yaml
+docs/api/api-contract.md
 ```
 
 Cover:

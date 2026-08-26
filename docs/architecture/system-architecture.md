@@ -3968,19 +3968,15 @@ must pass.
 
 # 183. API Documentation
 
-OpenAPI:
+The complete API documentation lives in a single Markdown contract:
 
 ```text
-docs/api/openapi.yaml
+docs/api/api-contract.md
 ```
 
-Swagger:
-
-```text
-/api/docs
-```
-
-The API contract should remain synchronized with implementation.
+No `docs/api/openapi.yaml` or Swagger UI exists in this repository; that Markdown
+contract is the API source of truth and must remain synchronized with the
+implementation (new routes, changed schemas, new error codes).
 
 ---
 
