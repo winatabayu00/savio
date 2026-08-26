@@ -103,6 +103,7 @@ func registerTelegramRoutes(api *gin.RouterGroup, a *App) {
 	cfg.GET("", h.GetConfig)
 	cfg.PATCH("", h.UpdateConfig)
 	cfg.POST("/register-webhook", h.RegisterWebhook)
+	g.POST("/registration-code", h.CreateRegistrationCode)
 }
 
 func registerScenarioRoutes(api *gin.RouterGroup, a *App) {

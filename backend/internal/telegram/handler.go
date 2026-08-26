@@ -3,6 +3,7 @@ package telegram
 import (
 	"crypto/subtle"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -130,6 +131,25 @@ type registerWebhookReq struct {
 	WebhookURL string `json:"webhook_url"`
 }
 
+type registrationResponse struct {
+	Code      string `json:"code"`
+	ExpiresIn int    `json:"expires_in_seconds"`
+}
+
+func (h *Handler) CreateRegistrationCode(c *gin.Context) {
+	x, err := authctx.Get(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	code, err := h.svc.CreateRegistrationCode(c.Request.Context(), x.WorkspaceID, x.UserID)
+	if err != nil {
+		httpx.Fail(c, errs.Validation("bot Telegram belum aktif"))
+		return
+	}
+	httpx.Success(c, http.StatusCreated, registrationResponse{Code: code, ExpiresIn: 600})
+}
+
 // RegisterWebhook registers or removes the bot webhook (empty url removes).
 func (h *Handler) RegisterWebhook(c *gin.Context) {
 	x, err := authctx.Get(c)
@@ -151,9 +171,8 @@ func (h *Handler) RegisterWebhook(c *gin.Context) {
 }
 
 // HandleWebhook receives Telegram push updates (no session, no CSRF). The
-// URL and Telegram's secret-token header guard the route; the configured chat_id
-// still authorizes every message, and the telegram_processed constraint keeps
-// exactly-once even if Telegram retries.
+// URL and Telegram's secret-token header guard the route. The Telegram user and
+// chat must also be registered to this workspace before financial writes occur.
 func (h *Handler) HandleWebhook(c *gin.Context) {
 	ctx := c.Request.Context()
 	secret := c.Param("secret")
@@ -176,8 +195,8 @@ func (h *Handler) HandleWebhook(c *gin.Context) {
 		return
 	}
 	client := newBotClient(st.BotToken)
-	if err := h.svc.Handle(ctx, st, u, client); err != nil && u.Message != nil && st.ChatID != "" {
-		_ = client.sendMessage(ctx, st.ChatID, "Gagal memproses pesan, coba lagi.")
+	if err := h.svc.Handle(ctx, st, u, client); err != nil && u.Message != nil {
+		_ = client.sendMessage(ctx, strconv.FormatInt(u.Message.Chat.ID, 10), "Gagal memproses pesan, coba lagi.")
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

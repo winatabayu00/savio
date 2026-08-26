@@ -24,6 +24,7 @@ type Update struct {
 			ID int64 `json:"id"`
 		} `json:"chat"`
 		From struct {
+			ID        int64  `json:"id"`
 			FirstName string `json:"first_name"`
 		} `json:"from"`
 		Text string `json:"text"`

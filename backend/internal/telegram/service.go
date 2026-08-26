@@ -2,6 +2,9 @@ package telegram
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -15,6 +18,24 @@ import (
 	"github.com/savio/savio/backend/internal/platform/money"
 	"github.com/savio/savio/backend/internal/transactions"
 )
+
+type RegistrationCode struct {
+	CodeHash    string    `gorm:"primaryKey;column:code_hash"`
+	WorkspaceID uuid.UUID `gorm:"column:workspace_id"`
+	UserID      uuid.UUID `gorm:"column:user_id"`
+	ExpiresAt   time.Time `gorm:"column:expires_at"`
+}
+
+func (RegistrationCode) TableName() string { return "telegram_registration_codes" }
+
+type ChatBinding struct {
+	WorkspaceID    uuid.UUID `gorm:"column:workspace_id"`
+	UserID         uuid.UUID `gorm:"column:user_id"`
+	TelegramUserID int64     `gorm:"column:telegram_user_id"`
+	ChatID         int64     `gorm:"column:chat_id"`
+}
+
+func (ChatBinding) TableName() string { return "telegram_chat_bindings" }
 
 // Service implements the Telegram recap bot: it long-polls Telegram and writes
 // parsed expense messages into the configured workspace as POSTED transactions.
@@ -85,10 +106,68 @@ func (s *Service) Handle(ctx context.Context, st *Settings, u Update, client *bo
 	if !st.Enabled || st.BotToken == "" || u.Message == nil {
 		return nil
 	}
-	if st.ChatID != "" && strconv.FormatInt(u.Message.Chat.ID, 10) != st.ChatID {
-		return nil
+	chatID := strconv.FormatInt(u.Message.Chat.ID, 10)
+	text := strings.TrimSpace(u.Message.Text)
+	if strings.HasPrefix(text, "/start ") {
+		return s.registerChat(ctx, st, u, client, strings.TrimSpace(strings.TrimPrefix(text, "/start ")))
 	}
-	return s.handle(ctx, st, u, client)
+	var binding ChatBinding
+	if err := s.db.WithContext(ctx).Where("workspace_id = ? AND telegram_user_id = ? AND chat_id = ?", st.WorkspaceID, u.Message.From.ID, u.Message.Chat.ID).Take(&binding).Error; err != nil {
+		return client.sendMessage(ctx, chatID, "Chat ini belum terdaftar. Buat kode pendaftaran di Savio, lalu kirim /start KODE.")
+	}
+	return s.handle(ctx, st, u, client, binding.UserID)
+}
+
+// CreateRegistrationCode returns a short-lived code that binds the authenticated
+// Savio user to the Telegram account and chat that submits it.
+func (s *Service) CreateRegistrationCode(ctx context.Context, workspaceID, userID uuid.UUID) (string, error) {
+	st, err := s.settingsForWorkspace(ctx, workspaceID)
+	if err != nil {
+		return "", err
+	}
+	if !st.Enabled || st.BotToken == "" {
+		return "", fmt.Errorf("Telegram bot belum aktif")
+	}
+	b := make([]byte, 18)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	code := base64.RawURLEncoding.EncodeToString(b)
+	hash := sha256.Sum256([]byte(code))
+	registration := RegistrationCode{CodeHash: base64.RawURLEncoding.EncodeToString(hash[:]), WorkspaceID: workspaceID, UserID: userID, ExpiresAt: time.Now().UTC().Add(10 * time.Minute)}
+	if err := s.db.WithContext(ctx).Where("workspace_id = ? AND user_id = ?", workspaceID, userID).Delete(&RegistrationCode{}).Error; err != nil {
+		return "", err
+	}
+	if err := s.db.WithContext(ctx).Create(&registration).Error; err != nil {
+		return "", err
+	}
+	return code, nil
+}
+
+func (s *Service) registerChat(ctx context.Context, st *Settings, u Update, client *botClient, code string) error {
+	hash := sha256.Sum256([]byte(code))
+	codeHash := base64.RawURLEncoding.EncodeToString(hash[:])
+	var registration RegistrationCode
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("code_hash = ? AND expires_at > ?", codeHash, time.Now().UTC()).Take(&registration).Error; err != nil {
+			return err
+		}
+		if registration.WorkspaceID != st.WorkspaceID {
+			return gorm.ErrRecordNotFound
+		}
+		binding := ChatBinding{WorkspaceID: st.WorkspaceID, UserID: registration.UserID, TelegramUserID: u.Message.From.ID, ChatID: u.Message.Chat.ID}
+		if err := tx.Where("telegram_user_id = ? AND chat_id = ?", binding.TelegramUserID, binding.ChatID).Delete(&ChatBinding{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&binding).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&registration).Error
+	})
+	if err != nil {
+		return client.sendMessage(ctx, strconv.FormatInt(u.Message.Chat.ID, 10), "Kode pendaftaran tidak valid atau sudah kedaluwarsa.")
+	}
+	return client.sendMessage(ctx, strconv.FormatInt(u.Message.Chat.ID, 10), "Chat terdaftar. Kirim pengeluaran, contoh: kopi 25000")
 }
 
 // claim inserts the (workspace, update id) pair with a unique constraint so a
@@ -100,7 +179,7 @@ func (s *Service) claim(ctx context.Context, workspaceID uuid.UUID, id int64) bo
 	return res.Error == nil && res.RowsAffected == 1
 }
 
-func (s *Service) handle(ctx context.Context, st *Settings, u Update, client *botClient) error {
+func (s *Service) handle(ctx context.Context, st *Settings, u Update, client *botClient, authorizer uuid.UUID) error {
 	chatID := strconv.FormatInt(u.Message.Chat.ID, 10)
 	text := strings.TrimSpace(u.Message.Text)
 	if text == "" || text == "/start" || text == "/help" {
@@ -115,7 +194,7 @@ func (s *Service) handle(ctx context.Context, st *Settings, u Update, client *bo
 	}
 	wsID := st.WorkspaceID
 
-	authorizer, userName, err := s.authorizerFor(ctx, wsID, st.ConfiguredByUserID)
+	userName, err := s.userName(ctx, wsID, authorizer)
 	if err != nil {
 		return client.sendMessage(ctx, chatID, "Gagal membaca ruang kerja. Pastikan konfigurasi Telegram valid.")
 	}
@@ -205,6 +284,12 @@ func (s *Service) authorizerFor(ctx context.Context, wsID uuid.UUID, preferred *
 		}
 	}
 	return s.ownerUserID(ctx, wsID)
+}
+
+func (s *Service) userName(ctx context.Context, wsID, userID uuid.UUID) (string, error) {
+	var user struct{ Name string }
+	err := s.db.WithContext(ctx).Table("workspace_memberships wm").Select("u.name").Joins("JOIN users u ON u.id = wm.user_id").Where("wm.workspace_id = ? AND wm.user_id = ? AND wm.status = 'ACTIVE'", wsID, userID).Take(&user).Error
+	return user.Name, err
 }
 
 func (s *Service) defaultAccountID(ctx context.Context, wsID uuid.UUID) (uuid.UUID, error) {
