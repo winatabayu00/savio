@@ -1,6 +1,8 @@
 package accounts
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 
@@ -57,7 +59,29 @@ func (h *Handler) List(c *gin.Context) {
 		httpx.Fail(c, errs.ValidationFields(map[string]string{"status": "status must be ACTIVE or ARCHIVED"}))
 		return
 	}
-	rows, total, err := h.svc.List(c.Request.Context(), ctx.WorkspaceID, status, pg.Page, pg.Limit, pg.Offset())
+	typ := c.Query("type")
+	if typ != "" && !ValidType(typ) {
+		httpx.Fail(c, errs.ValidationFields(map[string]string{"type": "Unsupported account type"}))
+		return
+	}
+	sortField := c.Query("sort")
+	if sortField == "" {
+		sortField = "created_at"
+	}
+	allowedSort := map[string]bool{"name": true, "type": true, "opening_balance": true, "created_at": true, "updated_at": true}
+	if !allowedSort[sortField] {
+		httpx.Fail(c, errs.ValidationFields(map[string]string{"sort": "Unsupported sort field"}))
+		return
+	}
+	order := c.Query("order")
+	if order == "" {
+		order = "asc"
+	}
+	if order != "asc" && order != "desc" {
+		httpx.Fail(c, errs.ValidationFields(map[string]string{"order": "order must be asc or desc"}))
+		return
+	}
+	rows, total, err := h.svc.List(c.Request.Context(), ctx.WorkspaceID, status, typ, sortField, order == "desc", pg.Page, pg.Limit, pg.Offset())
 	if err != nil {
 		httpx.Fail(c, err)
 		return
@@ -145,7 +169,11 @@ func (h *Handler) Update(c *gin.Context) {
 	httpx.Success(c, http.StatusOK, v)
 }
 
-func (h *Handler) Archive(c *gin.Context) {
+type setStatusReq struct {
+	Version *int64 `json:"version"`
+}
+
+func (h *Handler) setStatus(c *gin.Context, archived bool) {
 	ctx, err := authctx.Get(c)
 	if err != nil {
 		httpx.Fail(c, err)
@@ -156,7 +184,14 @@ func (h *Handler) Archive(c *gin.Context) {
 		httpx.Fail(c, err)
 		return
 	}
-	v, err := h.svc.SetStatus(c.Request.Context(), ctx.WorkspaceID, id, true)
+	var req setStatusReq
+	if raw, rerr := io.ReadAll(c.Request.Body); rerr == nil && len(raw) > 0 {
+		if uerr := json.Unmarshal(raw, &req); uerr != nil {
+			httpx.Fail(c, errs.Validation("Request body is not valid JSON"))
+			return
+		}
+	}
+	v, err := h.svc.SetStatus(c.Request.Context(), ctx.WorkspaceID, id, archived, req.Version)
 	if err != nil {
 		httpx.Fail(c, err)
 		return
@@ -164,24 +199,8 @@ func (h *Handler) Archive(c *gin.Context) {
 	httpx.Success(c, http.StatusOK, v)
 }
 
-func (h *Handler) Restore(c *gin.Context) {
-	ctx, err := authctx.Get(c)
-	if err != nil {
-		httpx.Fail(c, err)
-		return
-	}
-	id, err := httpx.ParseUUID(c, "id")
-	if err != nil {
-		httpx.Fail(c, err)
-		return
-	}
-	v, err := h.svc.SetStatus(c.Request.Context(), ctx.WorkspaceID, id, false)
-	if err != nil {
-		httpx.Fail(c, err)
-		return
-	}
-	httpx.Success(c, http.StatusOK, v)
-}
+func (h *Handler) Archive(c *gin.Context) { h.setStatus(c, true) }
+func (h *Handler) Restore(c *gin.Context) { h.setStatus(c, false) }
 
 func (h *Handler) Delete(c *gin.Context) {
 	ctx, err := authctx.Get(c)

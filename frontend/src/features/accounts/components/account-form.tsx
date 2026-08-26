@@ -39,7 +39,7 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
   } = useForm({
     resolver: zodResolver(accountSchema),
     defaultValues: account
-      ? { name: account.name, type: account.type, opening_balance: account.opening_balance }
+      ? { name: account.name, type: account.type, opening_balance: String(account.opening_balance / 100) }
       : { name: '', type: 'BANK', opening_balance: '' },
   });
 

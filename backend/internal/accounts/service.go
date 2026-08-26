@@ -65,8 +65,8 @@ func (s *Service) workspaceBaseCurrency(ctx context.Context, workspaceID uuid.UU
 	return ws.BaseCurrency, nil
 }
 
-func (s *Service) List(ctx context.Context, workspaceID uuid.UUID, status string, page, limit, offset int) ([]View, int64, error) {
-	rows, total, err := s.repo.List(ctx, workspaceID, status, page, limit, offset)
+func (s *Service) List(ctx context.Context, workspaceID uuid.UUID, status, typ, sortField string, sortDesc bool, page, limit, offset int) ([]View, int64, error) {
+	rows, total, err := s.repo.List(ctx, workspaceID, status, typ, sortField, sortDesc, page, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -179,7 +179,7 @@ func (s *Service) Update(ctx context.Context, workspaceID uuid.UUID, in *UpdateI
 	return &v, nil
 }
 
-func (s *Service) SetStatus(ctx context.Context, workspaceID, id uuid.UUID, archived bool) (*View, error) {
+func (s *Service) SetStatus(ctx context.Context, workspaceID, id uuid.UUID, archived bool, expectVersion *int64) (*View, error) {
 	status := string(StatusActive)
 	var archivedAt *time.Time
 	if archived {
@@ -187,7 +187,7 @@ func (s *Service) SetStatus(ctx context.Context, workspaceID, id uuid.UUID, arch
 		t := time.Now()
 		archivedAt = &t
 	}
-	if err := s.repo.SetStatus(ctx, workspaceID, id, status, archivedAt); err != nil {
+	if err := s.repo.SetStatus(ctx, workspaceID, id, status, archivedAt, expectVersion); err != nil {
 		return nil, err
 	}
 	a, err := s.repo.FindByID(ctx, workspaceID, id)

@@ -225,7 +225,7 @@ func (s *Service) Dashboard(ctx context.Context, workspaceID uuid.UUID, now time
 		return nil, err
 	}
 
-	accViews, _, err := accounts.NewService(s.db).List(ctx, workspaceID, "", 1, 100, 0)
+	accViews, _, err := accounts.NewService(s.db).List(ctx, workspaceID, "", "", "created_at", false, 1, 100, 0)
 	if err != nil {
 		return nil, err
 	}

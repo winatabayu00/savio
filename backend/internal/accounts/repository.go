@@ -3,6 +3,7 @@ package accounts
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,17 +38,24 @@ func (r *Repository) FindByID(ctx context.Context, workspaceID, id uuid.UUID) (*
 	return &a, nil
 }
 
-func (r *Repository) List(ctx context.Context, workspaceID uuid.UUID, status string, page, limit, offset int) ([]Account, int64, error) {
+func (r *Repository) List(ctx context.Context, workspaceID uuid.UUID, status, typ, sortField string, sortDesc bool, page, limit, offset int) ([]Account, int64, error) {
 	q := r.db.WithContext(ctx).Where("workspace_id = ?", workspaceID)
 	if status != "" {
 		q = q.Where("status = ?", status)
+	}
+	if typ != "" {
+		q = q.Where("type = ?", typ)
 	}
 	var total int64
 	if err := q.Model(&Account{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
+	dir := "ASC"
+	if sortDesc {
+		dir = "DESC"
+	}
 	var rows []Account
-	if err := q.Order("created_at ASC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
+	if err := q.Order(fmt.Sprintf("%s %s", sortField, dir)).Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
 		return nil, 0, err
 	}
 	return rows, total, nil
@@ -93,14 +101,24 @@ func (r *Repository) UpdateOpeningBalance(ctx context.Context, workspaceID, id u
 	return nil
 }
 
-func (r *Repository) SetStatus(ctx context.Context, workspaceID, id uuid.UUID, status string, archivedAt *time.Time) error {
-	res := r.db.WithContext(ctx).Model(&Account{}).
-		Where("id = ? AND workspace_id = ?", id, workspaceID).
-		Updates(map[string]any{"status": status, "archived_at": archivedAt})
+func (r *Repository) SetStatus(ctx context.Context, workspaceID, id uuid.UUID, status string, archivedAt *time.Time, expectVersion *int64) error {
+	q := r.db.WithContext(ctx).Model(&Account{}).
+		Where("id = ? AND workspace_id = ?", id, workspaceID)
+	if expectVersion != nil {
+		q = q.Where("version = ?", *expectVersion)
+	}
+	res := q.Updates(map[string]any{
+		"status":      status,
+		"archived_at": archivedAt,
+		"version":     gorm.Expr("version + 1"),
+	})
 	if res.Error != nil {
 		return res.Error
 	}
 	if res.RowsAffected == 0 {
+		if expectVersion != nil {
+			return errs.VersionConflict("This account was changed since you last opened it. Reload the latest version.")
+		}
 		return errs.NotFound("Account not found")
 	}
 	return nil
