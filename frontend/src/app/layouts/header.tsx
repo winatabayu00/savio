@@ -55,45 +55,45 @@ export function Header({ navigationOpen, setNavigationOpen }: HeaderProps) {
     <header className="nxl-header">
       <div className="header-wrapper">
         <div className="header-left d-flex align-items-center gap-4">
-          <a
-            href="#"
+          <button
+            type="button"
             className="nxl-head-mobile-toggler"
-            onClick={(e) => {
-              e.preventDefault();
+            onClick={() => {
               setNavigationOpen(!navigationOpen);
             }}
             id="mobile-collapse"
+            aria-label="Toggle navigation"
           >
             <div className={`hamburger hamburger--arrowturn ${navigationOpen ? 'is-active' : ''}`}>
               <div className="hamburger-box">
                 <div className="hamburger-inner"></div>
               </div>
             </div>
-          </a>
+          </button>
           <div className="nxl-navigation-toggle">
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
+            <button
+              type="button"
+              onClick={() => {
                 toggleMini();
               }}
+              aria-label="Toggle compact navigation"
             >
               {miniMenu ? <FiArrowRight size={24} /> : <FiAlignLeft size={24} />}
-            </a>
+            </button>
           </div>
         </div>
         <div className="header-right ms-auto">
           <div className="d-flex align-items-center">
             <div ref={profileRef} className="dropdown nxl-h-item">
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
+              <button
+                type="button"
+                onClick={() => {
                   toggleProfile();
                 }}
                 data-bs-auto-close="outside"
                 aria-expanded={profileOpen}
                 className="nxl-head-link"
+                aria-label="Open account menu"
               >
                 <span className="user-avtar user-avtar-text">
                   {(auth?.user.name ?? 'U')
@@ -103,7 +103,7 @@ export function Header({ navigationOpen, setNavigationOpen }: HeaderProps) {
                     .join('')
                     .toUpperCase()}
                 </span>
-              </a>
+              </button>
               <div className={`dropdown-menu dropdown-menu-end nxl-h-dropdown nxl-user-dropdown ${profileOpen ? 'show' : ''}`}>
                 <div className="dropdown-header">
                   <div className="d-flex align-items-center">
@@ -118,18 +118,17 @@ export function Header({ navigationOpen, setNavigationOpen }: HeaderProps) {
                     </div>
                   </div>
                 </div>
-                <a href="#" className="dropdown-item" onClick={(e) => e.preventDefault()}>
+                <button type="button" className="dropdown-item" onClick={() => navigate('/settings')}>
                   <i>
                     <FiSettings />
                   </i>
                   <span>Account Settings</span>
-                </a>
+                </button>
                 <div className="dropdown-divider"></div>
-                <a
-                  href="#"
+                <button
+                  type="button"
                   className="dropdown-item"
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={() => {
                     void onLogout();
                   }}
                 >
@@ -137,7 +136,7 @@ export function Header({ navigationOpen, setNavigationOpen }: HeaderProps) {
                     <FiLogOut />
                   </i>
                   <span>Logout</span>
-                </a>
+                </button>
               </div>
             </div>
           </div>
