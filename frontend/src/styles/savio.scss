@@ -4,6 +4,177 @@
 // styles still compile but are inert. Trim later only if the CSS payload matters.
 @import "./duralux/theme.scss";
 
+// Savio's visual layer: precise, calm financial surfaces over the vendored shell.
+:root {
+  --savio-ink: #14213d;
+  --savio-blue: #2354d8;
+  --savio-blue-dark: #183ca3;
+  --savio-mist: #f4f7fc;
+  --savio-line: #dfe6f1;
+  --savio-muted: #65728a;
+  --savio-positive: #087a5a;
+  --savio-negative: #c3414f;
+}
+
+body {
+  background: var(--savio-mist);
+  color: var(--savio-ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a { text-underline-offset: 3px; }
+
+:focus-visible {
+  outline: 3px solid rgba(35, 84, 216, .32);
+  outline-offset: 2px;
+}
+
+.nxl-header {
+  border-bottom: 1px solid var(--savio-line);
+  box-shadow: none;
+}
+
+.nxl-header .header-wrapper { min-height: 72px; }
+.nxl-header .nxl-head-link { border-radius: 12px; }
+
+.nxl-navigation {
+  background: #fff;
+  border-right: 1px solid var(--savio-line);
+}
+
+.nxl-navigation .m-header {
+  height: 72px;
+  border-bottom: 1px solid var(--savio-line);
+}
+
+.nxl-navigation .b-brand .logo-lg,
+.nxl-navigation .b-brand .logo-sm {
+  color: var(--savio-ink) !important;
+  letter-spacing: -.055em;
+}
+
+.nxl-navigation .nxl-caption label {
+  color: #8c99ad;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.nxl-navigation .nxl-link {
+  border-radius: 9px;
+  color: #53617a;
+  font-weight: 600;
+  margin: 2px 12px;
+  width: calc(100% - 24px);
+}
+
+.nxl-navigation .nxl-item.active > .nxl-link,
+.nxl-navigation .nxl-link:hover {
+  background: #eaf0ff;
+  color: var(--savio-blue);
+}
+
+.nxl-container { background: var(--savio-mist); }
+.nxl-container .main-content { padding: 28px 32px 36px; }
+
+.page-header {
+  align-items: flex-end;
+  border-bottom: 1px solid var(--savio-line);
+  margin-bottom: 28px;
+  padding: 0 0 20px;
+}
+
+.page-header .page-header-title h5 {
+  color: var(--savio-ink);
+  font-size: 25px;
+  font-weight: 750;
+  letter-spacing: -.035em;
+  margin-bottom: 6px !important;
+}
+
+.page-header .breadcrumb { margin: 0; }
+.page-header .breadcrumb-item,
+.page-header .breadcrumb-item a { color: var(--savio-muted); font-size: 12px; }
+
+.card {
+  border: 1px solid var(--savio-line);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(20, 33, 61, .025);
+}
+
+.card .card-header { background: transparent; border-bottom-color: var(--savio-line); }
+.card .card-body { padding: 22px; }
+
+.btn {
+  border-radius: 9px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.btn-primary {
+  background: var(--savio-blue);
+  border-color: var(--savio-blue);
+  box-shadow: 0 4px 10px rgba(35, 84, 216, .18);
+}
+
+.btn-primary:hover,
+.btn-primary:focus { background: var(--savio-blue-dark); border-color: var(--savio-blue-dark); }
+.btn-outline-primary { border-color: #b8c9fa; color: var(--savio-blue); }
+
+.form-control,
+.form-select {
+  border-color: #ccd6e5;
+  border-radius: 9px;
+  color: var(--savio-ink);
+  min-height: 42px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--savio-blue);
+  box-shadow: 0 0 0 3px rgba(35, 84, 216, .12);
+}
+
+.table { --bs-table-bg: transparent; --bs-table-border-color: var(--savio-line); }
+.table > :not(caption) > * > * { padding: 14px 12px; }
+.table thead th { color: var(--savio-muted); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.list-group-item { border-color: var(--savio-line); }
+.text-success { color: var(--savio-positive) !important; }
+.text-danger { color: var(--savio-negative) !important; }
+
+.alert { border: 0; border-radius: 12px; }
+.badge { border-radius: 6px; font-weight: 700; letter-spacing: .02em; }
+
+.auth-minimal-wrapper {
+  background: radial-gradient(circle at 15% 10%, #dce7ff 0, transparent 30%), linear-gradient(135deg, #f8faff, #edf2fa);
+}
+
+.auth-minimal-wrapper .card {
+  border: 1px solid rgba(210, 220, 237, .9);
+  box-shadow: 0 22px 55px rgba(24, 60, 163, .12);
+}
+
+.auth-minimal-wrapper .wd-50 {
+  background: var(--savio-blue) !important;
+  box-shadow: 0 8px 20px rgba(35, 84, 216, .3) !important;
+}
+
+@media (max-width: 767.98px) {
+  .nxl-container .main-content { padding: 20px 16px 28px; }
+  .page-header { align-items: flex-start; flex-direction: column; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; }
+  .page-header .page-header-title h5 { font-size: 22px; }
+  .page-header-right { margin-left: 0 !important; width: 100%; }
+  .page-header-right-items { width: 100%; }
+  .page-header-right-items .btn { width: 100%; }
+  .card .card-body { padding: 18px; }
+  .table-responsive { border: 1px solid var(--savio-line); border-radius: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
+
 // ponytail: template relies on react-perfect-scrollbar for the nav; plain
 // overflow keeps it usable without the extra dependency.
 .nxl-navigation .navbar-content {
@@ -52,4 +223,58 @@ html:not(.minimenu) .nxl-navigation .navbar-content {
 
 .nxl-head-link .user-avtar.user-avtar-text {
   margin-right: 0;
+}
+
+// Insights: a quiet reading surface where actual cashflow precedes interpretation.
+.insights-intro {
+  align-items: flex-end;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.insights-intro h1 {
+  color: var(--savio-ink);
+  font-size: 30px;
+  font-weight: 780;
+  letter-spacing: -.045em;
+  line-height: 1;
+  margin: 7px 0 10px;
+}
+
+.insights-intro p { color: var(--savio-muted); font-size: 14px; margin: 0; max-width: 620px; }
+.insights-eyebrow { color: var(--savio-blue); font-size: 10px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.insights-status { align-items: center; color: var(--savio-positive); display: inline-flex; font-size: 12px; font-weight: 700; gap: 8px; white-space: nowrap; }
+.insights-status span { background: var(--savio-positive); border-radius: 50%; height: 7px; width: 7px; }
+.insights-status.is-offline { color: #9a6700; }
+.insights-status.is-offline span { background: #d18a00; }
+
+.insights-section-heading { align-items: flex-end; display: flex; justify-content: space-between; margin-bottom: 13px; }
+.insights-section-heading span { color: var(--savio-positive); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.insights-section-heading h2 { color: var(--savio-ink); font-size: 17px; font-weight: 750; letter-spacing: -.025em; margin: 3px 0 0; }
+.insights-section-heading p { color: var(--savio-muted); font-size: 12px; margin: 0; }
+.insight-fact-card { overflow: hidden; position: relative; }
+.insight-fact-card::before { background: var(--savio-blue); content: ''; height: 3px; left: 0; position: absolute; top: 0; width: 100%; }
+.insight-fact-label { color: var(--savio-muted); font-size: 12px; font-weight: 650; }
+.insight-fact-value { color: var(--savio-ink); font-size: 21px; font-weight: 780; letter-spacing: -.04em; line-height: 1.25; margin-top: 8px; }
+
+.insights-narrative { border-color: #cad8fa; box-shadow: 0 10px 28px rgba(35, 84, 216, .07); }
+.insights-narrative .card-body { padding-bottom: 18px; }
+.insights-signal { color: var(--savio-ink); font-size: 12px; font-weight: 700; margin-top: 4px !important; }
+.insights-narrative h2 { color: var(--savio-ink); font-size: 21px; font-weight: 760; letter-spacing: -.035em; line-height: 1.25; margin: 26px 0 9px; max-width: 760px; }
+.insight-detail { color: #4d5b72; font-size: 14px; line-height: 1.7; margin: 0; max-width: 790px; }
+.insight-supporting-facts { background: #f7f9fe; border-top: 1px solid var(--savio-line); padding: 18px 22px 20px; }
+.insight-supporting-facts h3 { color: var(--savio-muted); font-size: 10px; font-weight: 800; letter-spacing: .1em; margin: 0 0 10px; text-transform: uppercase; }
+.insight-supporting-facts ul { color: #55637a; display: grid; font-size: 13px; gap: 7px 28px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; padding-left: 18px; }
+.insights-skeleton { display: grid; gap: 12px; grid-template-columns: repeat(3, 1fr); }
+.insights-skeleton span { animation: insight-pulse 1.2s ease-in-out infinite alternate; background: #e5ebf5; border-radius: 14px; height: 105px; }
+@keyframes insight-pulse { to { opacity: .52; } }
+
+@media (max-width: 767.98px) {
+  .insights-intro { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .insights-intro h1 { font-size: 27px; }
+  .insights-section-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .insight-supporting-facts { padding: 16px 18px; }
+  .insight-supporting-facts ul { grid-template-columns: 1fr; }
+  .insights-skeleton { grid-template-columns: 1fr; }
 }
