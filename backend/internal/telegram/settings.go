@@ -69,14 +69,24 @@ func (s *Service) UpdateSettings(ctx context.Context, workspaceID uuid.UUID, in 
 	if err != nil {
 		return nil, err
 	}
+	tokenChanged := false
 	if in.Enabled != nil {
 		st.Enabled = *in.Enabled
 	}
 	if in.BotToken != nil && strings.TrimSpace(*in.BotToken) != "" {
-		st.BotToken = strings.TrimSpace(*in.BotToken)
+		botToken := strings.TrimSpace(*in.BotToken)
+		tokenChanged = st.BotToken != botToken
+		st.BotToken = botToken
 	}
 	if in.ChatID != nil {
 		st.ChatID = strings.TrimSpace(*in.ChatID)
+	}
+	// Telegram stores webhooks per bot token. Keep an existing webhook working
+	// when its token is rotated from Settings.
+	if tokenChanged && st.WebhookURL != "" && st.WebhookSecret != "" {
+		if err := newBotClient(st.BotToken).setWebhook(ctx, webhookURLFor(st.WebhookURL, st.WebhookSecret), st.WebhookSecret); err != nil {
+			return nil, errs.WrapInternal(err, "reregister telegram webhook")
+		}
 	}
 	st.UpdatedAt = time.Now().UTC()
 	if err := s.upsert(ctx, st); err != nil {
@@ -144,8 +154,8 @@ func (s *Service) RegisterWebhook(ctx context.Context, workspaceID uuid.UUID, pu
 		}
 		return st, nil
 	}
-	u, err := url.Parse(publicURL)
-	if err != nil || u.Scheme != "https" || u.Host == "" {
+	u, err := url.Parse(strings.TrimSpace(publicURL))
+	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 		return nil, errs.Validation("webhook URL harus https:// publik, contoh https://xxxx.ngrok-free.app")
 	}
 	if st.WebhookSecret == "" {
