@@ -86,7 +86,7 @@ make dev-web
 make dev-worker
 ```
 
-The worker is only required for asynchronous jobs.
+The worker is required for recurring auto-posting, notification sweeps, and Telegram long-polling. It is a direct database-polling process, not a Redis queue consumer.
 
 ## Database Migrations
 
@@ -114,7 +114,7 @@ Force a migration version only when repairing migration state:
 make migrate-force MIGRATE_VERSION=<version>
 ```
 
-Migration files live in `backend/migrations/`. Production schema changes use explicit migrations, not GORM `AutoMigrate`.
+Migration files live in `backend/internal/migrations/` and are embedded by `backend/cmd/migrate/main.go` through `iofs`. Production schema changes use explicit migrations, not GORM `AutoMigrate`.
 
 ## Common Commands
 
@@ -177,6 +177,18 @@ make audit
 ## API Documentation
 
 - API contract: [`docs/api/api-contract.md`](../api/api-contract.md)
+
+## Telegram Recap
+
+1. Start `make dev-worker` for local long-polling.
+2. A workspace OWNER configures the bot token, chat ID, and enabled state from Settings.
+3. Use long-polling locally. For webhook delivery, register a public HTTPS API URL from Settings.
+4. `TELEGRAM_WEBHOOK_URL` is only a webhook base URL. It neither supplies bot credentials nor enables Telegram.
+5. A recap expense uses the AI-selected account when available; otherwise the first active workspace account. The first active OWNER is recorded as its author.
+
+## Deployment Status
+
+Docker Compose provisions local PostgreSQL, Redis, and MinIO. Savio currently has no production Docker images or deployment configuration. MinIO has no active upload/object-storage feature.
 
 ## Troubleshooting
 
